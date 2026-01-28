@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VLAN Physical Links</title>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap');
+
+        /* --- ACCESSIBILITY & LAYOUT STYLES --- */
+        :root {
+            /* Palette */
+            --c-yellow: #ffdc00;
+            --c-white: #ffffff;
+            --c-black: #000000;
+            --c-indigo: #3f61c4;
+            --c-green: #1ac987;
+            --c-pink: #fa91b6;
+            --c-grey: #f2f2f2;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--c-white);
+            color: var(--c-black);
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .diagram-area {
+            position: relative;
+            background-color: var(--c-white);
+            /* Clean border instead of shadow for flatter look */
+            border: 1px solid #e0e0e0; 
+            border-radius: 0; /* Square corners usually preferred in brand, but keeping slight radius if preferred */
+            padding: 20px;
+            margin-left: 20px;
+        }
+
+        .info-sidebar {
+            width: 250px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .info-card {
+            background: #fff;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-left: 8px solid var(--c-black);
+            margin-bottom: 0;
+        }
+
+        /* Branding Border Colors */
+        .card-indigo { border-left-color: var(--c-indigo); }
+        .card-green { border-left-color: var(--c-green); }
+
+        h2 { 
+            margin: 0 0 10px 0; 
+            font-size: 1.2rem; 
+            font-family: 'Roboto', sans-serif;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        p { margin: 5px 0; font-size: 0.95rem; color: var(--c-black); line-height: 1.5; }
+        
+        .ip-addr { 
+            font-family: 'Roboto Mono', monospace; 
+            background: var(--c-yellow); 
+            color: var(--c-black);
+            padding: 2px 6px; 
+            font-size: 0.85em;
+        }
+
+        /* Helper classes for text colors within cards */
+        .text-indigo { color: var(--c-indigo); font-weight: bold; }
+        .text-green { color: var(--c-green); font-weight: bold; }
+
+    </style>
+<script>
+                window.load_data_from_csv = (filename) => {
+                    // Implementation needed when code is downloaded
+                };
+
+                window.save_data_to_csv = (filename, data) => {
+                    // Implementation needed when code is downloaded
+                };
+
+                window.call_llm = (system_prompt, user_messages, json_fields) => {
+                    // Implementation needed when code is downloaded
+                };
+            </script></head>
+<body>
+<div class="info-sidebar">
+<!-- Replaced "Blue" context with "Indigo" -->
+<div class="info-card card-indigo">
+<h2 class="text-indigo">VLAN 10</h2>
+<p><strong>Role:</strong> Users</p>
+<p><strong>Subnet:</strong> <span class="ip-addr">192.168.1.0/24</span></p>
+<p>Traffic flows over the <span class="text-indigo">Indigo</span> physical link.</p>
+</div>
+<div class="info-card card-green">
+<h2 class="text-green">VLAN 20</h2>
+<p><strong>Role:</strong> Servers</p>
+<p><strong>Subnet:</strong> <span class="ip-addr">10.1.0.0/24</span></p>
+<p>Traffic flows over the <span class="text-green">Green</span> physical link.</p>
+</div>
+<div class="info-card">
+<h2>Topology Info</h2>
+<p>Without trunking, extending VLANs requires <strong>one dedicated cable</strong> per VLAN between switches.</p>
+</div>
+</div>
+<div class="diagram-area">
+<canvas height="500" id="networkCanvas" width="700"></canvas>
+</div>
+<script>
+    const canvas = document.getElementById('networkCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // --- Configuration (Colors) ---
+    const CONFIG = {
+        vlan10Color: '#3f61c4', // Brand Indigo
+        vlan20Color: '#1ac987', // Brand Green
+        switchColor: '#ffdc00', // Brand Yellow (Hero)
+        switchBorder: '#000000', // Brand Black
+        bgColor: '#ffffff',     // Brand White
+        packetSpeed: 2.0,       
+        packetRadius: 6         
+    };
+
+    // --- Layout ---
+    const SW_Y = 220;
+    const PC_Y = 60;
+    const SERVER_Y = 380;
+    
+    const LAYOUT = {
+        sw1: { x: 100, y: SW_Y, w: 140, h: 70, label: 'Switch 1' },
+        sw2: { x: 450, y: SW_Y, w: 140, h: 70, label: 'Switch 2' },
+    };
+
+    const DEVICES = {
+        pc1: { x: 50,  y: PC_Y, label: 'PC 1', vlan: 10, type: 'pc', connectedTo: 'sw1' },
+        pc2: { x: 170, y: PC_Y, label: 'PC 2', vlan: 10, type: 'pc', connectedTo: 'sw1' },
+        pc3: { x: 400, y: PC_Y, label: 'PC 4', vlan: 10, type: 'pc', connectedTo: 'sw2' },
+        pc4: { x: 520, y: PC_Y, label: 'PC 5', vlan: 10, type: 'pc', connectedTo: 'sw2' },
+
+        s1: { x: 50,  y: SERVER_Y, label: 'SVR 1', vlan: 20, type: 'server', connectedTo: 'sw1' },
+        s2: { x: 170, y: SERVER_Y, label: 'SVR 2', vlan: 20, type: 'server', connectedTo: 'sw1' },
+        s3: { x: 400, y: SERVER_Y, label: 'SVR 3', vlan: 20, type: 'server', connectedTo: 'sw2' },
+        s4: { x: 520, y: SERVER_Y, label: 'SVR 4', vlan: 20, type: 'server', connectedTo: 'sw2' },
+    };
+
+    // --- Path Logic (Unchanged) ---
+    function getWirePath(dev) {
+        const sw = LAYOUT[dev.connectedTo];
+        
+        let portOffset = 0;
+        if(dev.label.includes('1') || dev.label.includes('3')) portOffset = 30;
+        if(dev.label.includes('2') || dev.label.includes('4')) portOffset = 110;
+
+        const portX = sw.x + portOffset;
+        const portY = dev.vlan === 10 ? sw.y : sw.y + sw.h; 
+
+        return [
+            { x: dev.x, y: dev.y + (dev.vlan === 10 ? 30 : -40) }, 
+            { x: dev.x, y: dev.vlan === 10 ? sw.y - 40 : sw.y + sw.h + 40 }, 
+            { x: portX, y: dev.vlan === 10 ? sw.y - 40 : sw.y + sw.h + 40 }, 
+            { x: portX, y: portY } 
+        ];
+    }
+
+    let packets = [];
+    let isSpawning = false; 
+
+    class Packet {
+        constructor(vlan, path) {
+            this.vlan = vlan;
+            this.color = vlan === 10 ? CONFIG.vlan10Color : CONFIG.vlan20Color;
+            this.path = path; 
+            this.idx = 0; 
+            this.x = path[0].x;
+            this.y = path[0].y;
+            this.done = false;
+        }
+
+        update() {
+            if (this.done) return;
+            
+            const target = this.path[this.idx + 1];
+            if (!target) {
+                this.done = true;
+                return;
+            }
+
+            const dx = target.x - this.x;
+            const dy = target.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist <= CONFIG.packetSpeed) {
+                this.x = target.x;
+                this.y = target.y;
+                this.idx++;
+                if (this.idx >= this.path.length - 1) this.done = true;
+            } else {
+                this.x += (dx / dist) * CONFIG.packetSpeed;
+                this.y += (dy / dist) * CONFIG.packetSpeed;
+            }
+        }
+
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, CONFIG.packetRadius, 0, Math.PI * 2);
+            ctx.fill();
+            // Optional: White Border on packet for visibility
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+    }
+
+    function drawWireLine(path) {
+        ctx.strokeStyle = '#e0e0e0'; // Very light grey for inactive wires
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(path[0].x, path[0].y);
+        for(let i=1; i<path.length; i++) ctx.lineTo(path[i].x, path[i].y);
+        ctx.stroke();
+    }
+
+    function drawStatic() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Wires
+        Object.values(DEVICES).forEach(dev => {
+            const path = getWirePath(dev);
+            drawWireLine(path);
+        });
+
+        // Inter-Switch Links
+        const sw1Right = LAYOUT.sw1.x + LAYOUT.sw1.w;
+        const sw2Left = LAYOUT.sw2.x;
+
+        // Indigo Link (Top/VLAN 10)
+        ctx.strokeStyle = CONFIG.vlan10Color;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(sw1Right, LAYOUT.sw1.y + 20);
+        ctx.lineTo(sw2Left, LAYOUT.sw2.y + 20);
+        ctx.stroke();
+
+        // Green Link (Bottom/VLAN 20)
+        ctx.strokeStyle = CONFIG.vlan20Color;
+        ctx.beginPath();
+        ctx.moveTo(sw1Right, LAYOUT.sw1.y + 50);
+        ctx.lineTo(sw2Left, LAYOUT.sw2.y + 50);
+        ctx.stroke();
+
+        // Switches
+        [LAYOUT.sw1, LAYOUT.sw2].forEach(sw => {
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.fillRect(sw.x+4, sw.y+4, sw.w, sw.h);
+            
+            // Box
+            ctx.fillStyle = CONFIG.switchColor; // Yellow
+            ctx.strokeStyle = CONFIG.switchBorder; // Black
+            ctx.lineWidth = 2;
+            ctx.fillRect(sw.x, sw.y, sw.w, sw.h);
+            ctx.strokeRect(sw.x, sw.y, sw.w, sw.h);
+            
+            // Label
+            ctx.fillStyle = CONFIG.switchBorder;
+            ctx.font = 'bold 16px Roboto, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(sw.label, sw.x + sw.w/2, sw.y + sw.h/2);
+        });
+
+        // Devices
+        Object.values(DEVICES).forEach(dev => {
+            const color = dev.vlan === 10 ? CONFIG.vlan10Color : CONFIG.vlan20Color;
+            ctx.fillStyle = color;
+            
+            // Simple Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+             if(dev.type === 'pc') {
+                ctx.fillRect(dev.x - 20 + 2, dev.y - 15 + 2, 40, 30);
+            } else {
+                ctx.fillRect(dev.x - 15 + 2, dev.y - 25 + 2, 30, 50);
+            }
+
+            // Real Fill
+            ctx.fillStyle = color;
+
+            if(dev.type === 'pc') {
+                // Monitor
+                ctx.fillRect(dev.x - 20, dev.y - 15, 40, 30);
+                // Stand
+                ctx.fillRect(dev.x - 5, dev.y + 15, 10, 5);
+                ctx.fillRect(dev.x - 15, dev.y + 20, 30, 2);
+                // Screen
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(dev.x - 17, dev.y - 12, 34, 24);
+            } else {
+                // Server Tower
+                ctx.fillRect(dev.x - 15, dev.y - 25, 30, 50);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(dev.x-10, dev.y-10); ctx.lineTo(dev.x+10, dev.y-10);
+                ctx.moveTo(dev.x-10, dev.y+5); ctx.lineTo(dev.x+10, dev.y+5);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = CONFIG.switchBorder;
+            ctx.font = '500 13px Roboto, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(dev.label, dev.x, dev.y + (dev.type === 'pc' ? 35 : 40));
+        });
+
+        // Callout Bubble
+        const x = LAYOUT.sw1.x + 180;
+        const y = LAYOUT.sw1.y - 70;
+        const w = 150;
+        const h = 50;
+        const r = 8;
+        
+        // Bubble Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+        ctx.beginPath();
+        ctx.moveTo(x+r+2, y+2); ctx.lineTo(x+w-r+2, y+2); ctx.quadraticCurveTo(x+w+2, y+2, x+w+2, y+r+2);
+        ctx.lineTo(x+w+2, y+h-r+2); ctx.quadraticCurveTo(x+w+2, y+h+2, x+w-r+2, y+h+2);
+        ctx.lineTo(x+r+2, y+h+2); ctx.quadraticCurveTo(x+2, y+h+2, x+2, y+h-r+2);
+        ctx.lineTo(x+2, y+r+2); ctx.quadraticCurveTo(x+2, y+2, x+r+2, y+2);
+        ctx.fill();
+
+        // Bubble Body
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = CONFIG.switchBorder;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+        ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+        ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+        ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
+        ctx.fill(); ctx.stroke();
+
+        // Bubble Arrow
+        ctx.beginPath(); ctx.moveTo(x+w/2 - 8, y+h); ctx.lineTo(x+w/2, y+h+10); ctx.lineTo(x+w/2 + 8, y+h);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle='#fff'; ctx.fillRect(x+w/2 - 7, y+h-1, 14, 2);
+
+        // Bubble Text
+        ctx.fillStyle = CONFIG.switchBorder; 
+        ctx.font = 'bold 12px Roboto, sans-serif'; 
+        ctx.textAlign = 'center';
+        ctx.fillText("Separate Physical", x+w/2, y+20);
+        ctx.fillText("Links Required", x+w/2, y+35);
+    }
+
+    function spawnPackets() {
+        if(isSpawning) return; 
+        isSpawning = true;
+
+        // --- VLAN 10 Path (PC1 -> PC4) ---
+        const path1 = getWirePath(DEVICES.pc1);
+        const path2 = [
+            { x: LAYOUT.sw1.x + LAYOUT.sw1.w, y: LAYOUT.sw1.y + 20 },
+            { x: LAYOUT.sw2.x, y: LAYOUT.sw2.y + 20 }
+        ];
+        const path3 = getWirePath(DEVICES.pc3).reverse();
+        
+        packets.push(new Packet(10, [...path1, ...path2, ...path3]));
+
+        // --- VLAN 20 Path (S2 -> S3) ---
+        setTimeout(() => {
+            const sPath1 = getWirePath(DEVICES.s2);
+            const sPath2 = [
+                { x: LAYOUT.sw1.x + LAYOUT.sw1.w, y: LAYOUT.sw1.y + 50 },
+                { x: LAYOUT.sw2.x, y: LAYOUT.sw2.y + 50 }
+            ];
+            const sPath3 = getWirePath(DEVICES.s3).reverse();
+            
+            packets.push(new Packet(20, [...sPath1, ...sPath2, ...sPath3]));
+        }, 800);
+    }
+
+    function animate() {
+        drawStatic();
+
+        let active = false;
+        packets.forEach(p => {
+            p.update();
+            p.draw();
+            if (!p.done) active = true;
+        });
+
+        if (!active && packets.length > 0) {
+            packets = []; 
+            isSpawning = false; 
+        }
+        
+        if (packets.length === 0 && !isSpawning) {
+             setTimeout(spawnPackets, 500);
+        }
+
+        requestAnimationFrame(animate);
+    }
+
+    spawnPackets();
+    animate();
+
+</script>
+</body>
+</html>

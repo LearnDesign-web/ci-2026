@@ -1,0 +1,193 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Networking Fundamentals - Configuration Persistence</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap');
+        
+        :root { --accent-yellow: #ffdc00; --accent-blue: #3f61c4; --black: #000000; --white: #ffffff; --grey: #e0e0e0; }
+        
+        body { font-family: 'Roboto', sans-serif; background: var(--white); padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 800px; border: 2px solid var(--black); padding: 20px; }
+        .branding { font-family: Arial; font-weight: bold; border-bottom: 1px solid var(--black); padding-bottom: 10px; margin-bottom: 20px; text-transform: uppercase; }
+        
+        .router-box { border: 2px dashed var(--black); padding: 20px; margin-bottom: 20px; position: relative; height: 250px; background: #fafafa; }
+        .router-label { position: absolute; top: -12px; left: 20px; background: #fafafa; padding: 0 10px; font-weight: bold; border: 1px solid var(--black); }
+        
+        .memory-container { display: flex; justify-content: space-around; align-items: center; height: 100%; }
+        
+        .chip { width: 150px; height: 120px; border: 2px solid var(--black); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.3s; background: var(--white); position: relative; }
+        .chip-header { font-family: 'Roboto Mono'; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid var(--black); width: 100%; text-align: center; padding-bottom: 5px; background: #eee; }
+        .chip-body { font-size: 14px; text-align: center; padding: 5px; flex-grow: 1; display: flex; align-items: center; justify-content: center; }
+        
+        /* State Colours */
+        .color-ram { border-color: #d0021b; } 
+        .color-nvram { border-color: var(--accent-blue); }
+
+        .active-ram { background-color: #ffe6e6; } /* Light Red hint for volatile */
+        .active-nvram { background-color: #e6f2ff; } /* Light Blue hint for persistent */
+        
+        .highlight { background-color: var(--accent-yellow) !important; transform: scale(1.05); }
+
+        /* Animation Arrows */
+        .arrow-container { width: 100px; height: 40px; position: relative; display: flex; align-items: center; justify-content: center; }
+        .arrow-line { width: 0; height: 4px; background: var(--black); transition: width 0.5s; position: absolute; }
+        .arrow-head { 
+            width: 0; height: 0; 
+            border-top: 10px solid transparent; 
+            border-bottom: 10px solid transparent;
+            position: absolute;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .ah-right { border-left: 15px solid var(--black); right: 0; }
+        .ah-left { border-right: 15px solid var(--black); left: 0; }
+
+        .desc-box { background: #f9f9f9; padding: 15px; border-left: 5px solid var(--accent-yellow); min-height: 80px; margin-bottom: 20px; font-size: 15px; line-height: 1.5; }
+        
+        .btn-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        button { background: var(--white); border: 1px solid var(--black); padding: 10px 20px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:hover:not(:disabled) { background: var(--accent-yellow); }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .step-badge { background: var(--black); color: var(--white); padding: 2px 6px; border-radius: 4px; margin-right: 5px; font-size: 12px; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+        <div class="router-box">
+        <span class="router-label">Router Internal Memory</span>
+        
+        <div class="memory-container">
+            <!-- NVRAM (Persistent) -->
+            <div id="nvram" class="chip color-nvram active-nvram">
+                <div class="chip-header">NVRAM</div>
+                <div class="chip-body">startup-config<br>(Saved)</div>
+            </div>
+
+            <!-- Transfer Visuals -->
+            <div class="arrow-container">
+                <div id="line" class="arrow-line"></div>
+                <div id="head-right" class="arrow-head ah-right"></div>
+                <div id="head-left" class="arrow-head ah-left"></div>
+            </div>
+
+            <!-- RAM (Volatile) -->
+            <div id="ram" class="chip color-ram">
+                <div class="chip-header">RAM</div>
+                <div class="chip-body" id="ram-text">Empty<br>(Power Off)</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="desc-box" id="status">
+        <strong>System Status: Power Off.</strong><br>
+        RAM is volatile and currently empty. NVRAM is non-volatile and holds the saved configuration.
+    </div>
+
+    <div class="btn-row">
+        <button id="btn-boot" onclick="simBoot()">1. Boot Up</button>
+        <button id="btn-change" onclick="simChange()" disabled>2. Make Changes</button>
+        <button id="btn-save" onclick="simSave()" disabled>3. Copy Run Start</button>
+        <button id="btn-reload" onclick="simReload()" disabled>4. Power Cycle</button>
+    </div>
+</div>
+
+<script>
+    const ram = document.getElementById('ram');
+    const ramText = document.getElementById('ram-text');
+    const nvram = document.getElementById('nvram');
+    const status = document.getElementById('status');
+    const line = document.getElementById('line');
+    const headRight = document.getElementById('head-right');
+    const headLeft = document.getElementById('head-left');
+    
+    // State tracking
+    let isBooted = false;
+    let hasUnsavedChanges = false;
+
+    function resetVisuals() {
+        line.style.width = '0';
+        headRight.style.opacity = '0';
+        headLeft.style.opacity = '0';
+        ram.classList.remove('highlight');
+        nvram.classList.remove('highlight');
+    }
+
+    function simBoot() {
+        if(isBooted) return;
+        resetVisuals();
+        
+        // Animate NVRAM -> RAM
+        line.style.width = '100%';
+        setTimeout(() => { headRight.style.opacity = '1'; }, 400);
+
+        status.innerHTML = "<strong>Action: Booting...</strong><br>The router loads the static <code>startup-config</code> from NVRAM into RAM to create the dynamic <code>running-config</code>.";
+        
+        setTimeout(() => {
+            ram.classList.add('active-ram');
+            ramText.innerHTML = "running-config<br>(Active)";
+            isBooted = true;
+            updateButtons();
+        }, 1000);
+    }
+
+    function simChange() {
+        resetVisuals();
+        hasUnsavedChanges = true;
+        
+        ram.classList.add('highlight');
+        ramText.innerHTML = "running-config<br><b>(MODIFIED)</b>";
+        
+        status.innerHTML = "<strong>Action: Config Change</strong><br>You changed the hostname. This exists ONLY in RAM (Volatile). If you reboot now, this change will be lost!";
+        updateButtons();
+    }
+
+    function simSave() {
+        resetVisuals();
+        
+        // Animate RAM -> NVRAM
+        line.style.width = '100%';
+        setTimeout(() => { headLeft.style.opacity = '1'; }, 400);
+
+        status.innerHTML = "<strong>Action: write memory (copy run start)</strong><br>You initiated a save. The active configuration in RAM overwrites the file in NVRAM.";
+
+        setTimeout(() => {
+            nvram.classList.add('highlight');
+            ram.classList.remove('highlight');
+            ramText.innerHTML = "running-config<br>(Saved)";
+            hasUnsavedChanges = false;
+            updateButtons();
+        }, 1000);
+    }
+
+    function simReload() {
+        resetVisuals();
+        isBooted = false;
+        hasUnsavedChanges = false;
+        
+        // Wipe RAM
+        ram.className = "chip color-ram"; // Removes active/highlight
+        ramText.innerHTML = "Empty<br>(Power Off)";
+        
+        status.innerHTML = "<strong>Action: Power Cycle</strong><br>Power was cut. RAM is wiped instantly. Any unsaved changes are gone forever. The system is ready to boot again.";
+        updateButtons();
+    }
+
+    function updateButtons() {
+        document.getElementById('btn-boot').disabled = isBooted;
+        document.getElementById('btn-change').disabled = !isBooted;
+        document.getElementById('btn-save').disabled = !isBooted || !hasUnsavedChanges;
+        document.getElementById('btn-reload').disabled = !isBooted;
+    }
+</script>
+
+</body>
+</html>
+        
+        

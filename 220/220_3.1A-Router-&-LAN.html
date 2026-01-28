@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Router & LAN Interactive</title>
+    <style>
+        /* --- FONTS --- */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap');
+
+        /* --- BRAND VARIABLES (STRICT) --- */
+        :root {
+            --c-yellow: #ffdc00;       /* Hero Color */
+            --c-black: #000000;        /* Text/Lines */
+            --c-white: #ffffff;        /* Background */
+            --c-indigo: #3f61c4;       /* Secondary Accent */
+            --c-grey-light: #f2f2f2;   /* UI Elements */
+            --c-grey-dark: #333333;    /* Secondary Text */
+            
+            --f-heading: Arial, sans-serif;
+            --f-body: 'Roboto', Arial, sans-serif;
+            --f-mono: 'Roboto Mono', monospace;
+        }
+
+        /* --- RESET & LAYOUT --- */
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: var(--f-body);
+            background-color: var(--c-white);
+            color: var(--c-black);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            font-family: var(--f-heading);
+            font-size: 24px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        h2 {
+            font-family: var(--f-heading);
+            font-size: 16px;
+            color: var(--c-grey-dark);
+            font-weight: normal;
+            margin-top: 0;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        /* --- MAIN CONTAINER --- */
+        .interactive-container {
+            width: 100%;
+            max-width: 800px;
+            border: 1px solid var(--c-black);
+            background-color: var(--c-white);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* --- SVG STYLING --- */
+        .diagram-area {
+            width: 100%;
+            height: 400px;
+            background-color: var(--c-white);
+            position: relative;
+            overflow: hidden;
+            border-bottom: 1px solid var(--c-black);
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* SVG Elements */
+        .line-connection {
+            stroke: var(--c-black);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .device-shape {
+            fill: var(--c-white);
+            stroke: var(--c-black);
+            stroke-width: 2;
+        }
+        
+        .device-shape.router {
+            fill: var(--c-white);
+            stroke: var(--c-black);
+        }
+
+        .device-label {
+            font-family: var(--f-heading);
+            font-size: 12px;
+            font-weight: bold;
+            fill: var(--c-black);
+            text-anchor: middle;
+        }
+
+        .ip-label {
+            font-family: var(--f-mono);
+            font-size: 10px;
+            fill: var(--c-grey-dark);
+            text-anchor: middle;
+        }
+
+        /* Group Highlights (Monochromatic by default, Accent when active) */
+        .lan-zone {
+            fill: var(--c-grey-light);
+            opacity: 0; /* Hidden by default */
+            transition: opacity 0.5s ease;
+        }
+        .lan-zone.active {
+            opacity: 0.5;
+        }
+        
+        .highlight-stroke {
+            stroke: var(--c-indigo);
+            stroke-width: 3;
+            transition: stroke 0.3s;
+        }
+
+        /* The Packet */
+        #data-packet {
+            fill: var(--c-yellow);
+            stroke: var(--c-black);
+            stroke-width: 1;
+            opacity: 0;
+            transition: transform 1s cubic-bezier(0.45, 0.05, 0.55, 0.95), opacity 0.2s;
+        }
+
+        /* --- CONTROLS SECTION --- */
+        .controls-area {
+            padding: 24px;
+            background-color: var(--c-white);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .step-indicator {
+            font-family: var(--f-mono);
+            font-size: 14px;
+            color: var(--c-indigo);
+            font-weight: bold;
+            text-transform: uppercase;
+            border-left: 4px solid var(--c-indigo);
+            padding-left: 12px;
+        }
+
+        .description-box {
+            min-height: 60px;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-start;
+            margin-top: 8px;
+        }
+
+        button {
+            background-color: var(--c-white);
+            border: 1px solid var(--c-black);
+            color: var(--c-black);
+            padding: 10px 20px;
+            font-family: var(--f-heading);
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: var(--c-yellow);
+            color: var(--c-black); /* Contrast Rule: Black on Yellow */
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            background-color: var(--c-grey-light);
+            border-color: #ccc;
+        }
+
+        /* Accessibility: Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+            #data-packet, .lan-zone {
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="interactive-container" aria-label="Interactive animation of a router connecting two LANs">
+        
+        <div class="diagram-area">
+            <svg viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet">
+                
+                <rect id="zone-left" class="lan-zone" x="20" y="20" width="300" height="360" rx="10" />
+                <rect id="zone-right" class="lan-zone" x="480" y="20" width="300" height="360" rx="10" />
+
+                <line x1="100" y1="120" x2="180" y2="200" class="line-connection" />
+                <line x1="100" y1="280" x2="180" y2="200" class="line-connection" />
+                <line x1="260" y1="200" x2="360" y2="200" class="line-connection" id="link-left" />
+                
+                <line x1="440" y1="200" x2="540" y2="200" class="line-connection" id="link-right" />
+                <line x1="620" y1="200" x2="700" y2="120" class="line-connection" />
+                <line x1="620" y1="200" x2="700" y2="280" class="line-connection" />
+
+                <g id="dev-router" transform="translate(400, 200)">
+                    <circle cx="0" cy="0" r="40" class="device-shape router" />
+                    <path d="M -15 0 L 15 0 M 0 -15 L 0 15 M -10 -10 L 10 10 M -10 10 L 10 -10" stroke="black" stroke-width="2" />
+                    <text y="55" class="device-label">ROUTER 0</text>
+                    <text y="-50" class="ip-label" id="ip-r-left" style="text-anchor: end; display:none;">10.0.0.1</text>
+                    <text y="-50" class="ip-label" id="ip-r-right" style="text-anchor: start; display:none;">20.0.0.1</text>
+                </g>
+
+                <g id="dev-sw0" transform="translate(220, 200)">
+                    <rect x="-40" y="-20" width="80" height="40" class="device-shape" />
+                    <text y="5" class="device-label">Switch 0</text>
+                </g>
+                <g id="dev-pc0" transform="translate(100, 100)">
+                    <rect x="-30" y="-25" width="60" height="50" class="device-shape" />
+                    <text y="40" class="device-label">PC 0</text>
+                    <text y="55" class="ip-label">10.0.0.2</text>
+                </g>
+                <g id="dev-pc2" transform="translate(100, 300)">
+                    <rect x="-30" y="-25" width="60" height="50" class="device-shape" />
+                    <text y="40" class="device-label">PC 2</text>
+                    <text y="55" class="ip-label">10.0.0.3</text>
+                </g>
+                <text x="170" y="50" class="device-label" style="font-size:14px; fill:#3f61c4; opacity:0;" id="label-lan-a">LAN A (10.0.0.0/24)</text>
+
+                <g id="dev-sw1" transform="translate(580, 200)">
+                    <rect x="-40" y="-20" width="80" height="40" class="device-shape" />
+                    <text y="5" class="device-label">Switch 1</text>
+                </g>
+                <g id="dev-pc1" transform="translate(700, 100)">
+                    <rect x="-30" y="-25" width="60" height="50" class="device-shape" />
+                    <text y="40" class="device-label">PC 1</text>
+                    <text y="55" class="ip-label">20.0.0.2</text>
+                </g>
+                <g id="dev-pc3" transform="translate(700, 300)">
+                    <rect x="-30" y="-25" width="60" height="50" class="device-shape" />
+                    <text y="40" class="device-label">PC 3</text>
+                    <text y="55" class="ip-label">20.0.0.3</text>
+                </g>
+                <text x="630" y="50" class="device-label" style="font-size:14px; fill:#3f61c4; opacity:0;" id="label-lan-b">LAN B (20.0.0.0/24)</text>
+
+                <g id="data-packet" transform="translate(100, 100)">
+                    <rect x="-10" y="-8" width="20" height="16" rx="2" />
+                    <text x="0" y="4" font-family="Roboto Mono" font-size="8" text-anchor="middle" fill="black">IP</text>
+                </g>
+
+            </svg>
+        </div>
+
+        <div class="controls-area">
+            <div class="step-indicator" id="step-label">Step 01 / 05</div>
+            <div class="description-box" id="desc-text" aria-live="polite">
+                Loading...
+            </div>
+            
+            <div class="nav-buttons">
+                <button id="btn-prev" onclick="changeStep(-1)" disabled>Previous</button>
+                <button id="btn-next" onclick="changeStep(1)">Next</button>
+                <button id="btn-reset" onclick="resetSim()" style="margin-left:auto; border-color:var(--c-grey-dark);">Reset</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- STATE MANAGEMENT ---
+        let currentStep = 1;
+        const totalSteps = 5;
+
+        // --- DOM ELEMENTS ---
+        const stepLabel = document.getElementById('step-label');
+        const descText = document.getElementById('desc-text');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+        const packet = document.getElementById('data-packet');
+        
+        // Zones & Labels
+        const zoneLeft = document.getElementById('zone-left');
+        const zoneRight = document.getElementById('zone-right');
+        const labelLanA = document.getElementById('label-lan-a');
+        const labelLanB = document.getElementById('label-lan-b');
+        const routerCircle = document.querySelector('.device-shape.router');
+        const ipRLeft = document.getElementById('ip-r-left');
+        const ipRRight = document.getElementById('ip-r-right');
+
+        // --- STEP DATA ---
+        const steps = [
+            {
+                id: 1,
+                text: "Here we have two separate Local Area Networks (LANs). <strong>LAN A</strong> uses the 10.0.0.0/24 network, while <strong>LAN B</strong> uses the 20.0.0.0/24 network. Without a router, these two networks cannot communicate.",
+                action: () => {
+                    // Highlight Topology
+                    zoneLeft.classList.add('active');
+                    zoneRight.classList.add('active');
+                    labelLanA.style.opacity = 1;
+                    labelLanB.style.opacity = 1;
+                    packet.style.opacity = 0;
+                    
+                    // Reset Router Highlight
+                    routerCircle.style.stroke = "black";
+                    routerCircle.style.strokeWidth = "2px";
+                    ipRLeft.style.display = 'none';
+                    ipRRight.style.display = 'none';
+                }
+            },
+            {
+                id: 2,
+                text: "<strong>PC 0</strong> (10.0.0.2) wants to send data to <strong>PC 1</strong> (20.0.0.2). <br>Since the destination is on a different network, PC 0 cannot send it directly. It must package the data and address it to its <strong>Default Gateway</strong>.",
+                action: () => {
+                    // Spawn Packet at PC 0
+                    packet.style.opacity = 1;
+                    packet.style.transform = "translate(100px, 100px)"; // At PC0
+                    
+                    // Specific highlight
+                    zoneLeft.classList.add('active');
+                    zoneRight.classList.remove('active');
+                }
+            },
+            {
+                id: 3,
+                text: "The packet travels from PC 0, through Switch 0, to the Router's interface (10.0.0.1). This interface acts as the gateway out of LAN A.",
+                action: () => {
+                    // Move Packet to Router (via Switch visually approx)
+                    // Path: PC0(100,100) -> Switch(220,200) -> Router(400,200)
+                    // We'll animate straight to Router for simplicity or via switch
+                    // CSS transition handles point-to-point. 
+                    // Let's stop briefly at switch visually? No, one smooth flow for this step.
+                    packet.style.opacity = 1;
+                    packet.style.transform = "translate(400px, 200px)"; // At Router
+                    
+                    zoneLeft.classList.add('active');
+                    zoneRight.classList.remove('active');
+                    routerCircle.style.stroke = "black";
+                }
+            },
+            {
+                id: 4,
+                text: "The <strong>Router</strong> receives the packet. It inspects the destination IP (20.0.0.2) and checks its routing table. It sees that the 20.0.0.0/24 network is connected to its right interface.",
+                action: () => {
+                    // Highlight Router
+                    packet.style.transform = "translate(400px, 200px)";
+                    routerCircle.style.stroke = "#ffdc00"; // Yellow (Stroke only as per constraint)
+                    routerCircle.style.strokeWidth = "5px";
+                    
+                    // Show Interface IPs
+                    ipRLeft.style.display = 'block';
+                    ipRRight.style.display = 'block';
+                    
+                    // Dim zones to focus on Router
+                    zoneLeft.classList.remove('active');
+                    zoneRight.classList.remove('active');
+                }
+            },
+            {
+                id: 5,
+                text: "The router forwards the packet out of the correct interface. It travels through Switch 1 and finally reaches the destination, <strong>PC 1</strong>.",
+                action: () => {
+                    // Move Packet to PC 1
+                    // Path: Router(400,200) -> PC1(700,100)
+                    packet.style.transform = "translate(700px, 100px)"; 
+                    
+                    routerCircle.style.stroke = "black";
+                    routerCircle.style.strokeWidth = "2px";
+                    
+                    zoneLeft.classList.remove('active');
+                    zoneRight.classList.add('active');
+                }
+            }
+        ];
+
+        // --- FUNCTIONS ---
+        function updateUI() {
+            // Update Text
+            stepLabel.textContent = `Step 0${currentStep} / 0${totalSteps}`;
+            descText.innerHTML = steps[currentStep - 1].text;
+
+            // Update Buttons
+            btnPrev.disabled = currentStep === 1;
+            btnNext.disabled = currentStep === totalSteps;
+            if (currentStep === totalSteps) {
+                btnNext.textContent = "Finished";
+            } else {
+                btnNext.textContent = "Next";
+            }
+
+            // Trigger Animation/Visuals
+            steps[currentStep - 1].action();
+        }
+
+        function changeStep(direction) {
+            const newStep = currentStep + direction;
+            if (newStep >= 1 && newStep <= totalSteps) {
+                currentStep = newStep;
+                updateUI();
+            }
+        }
+
+        function resetSim() {
+            currentStep = 1;
+            updateUI();
+        }
+
+        // --- INITIALIZATION ---
+        // Pre-load logic
+        window.addEventListener('DOMContentLoaded', () => {
+            updateUI();
+        });
+
+    </script>
+</body>
+</html>
