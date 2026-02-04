@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Citation Remover</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+
+    <style>
+        /* Keep tab styling custom as it's specific to this tool */
+        .tab-btn {
+            @apply px-5 py-2 bg-gray-100 border-none rounded-t-lg cursor-pointer font-medium text-gray-500 transition-colors;
+        }
+        .tab-btn.active {
+            @apply bg-white text-slate-800 border-2 border-b-0 border-gray-200 z-10;
+        }
+        
+        /* Unified Button Styles */
+        .btn-primary {
+            background-color: #1e293b; /* Slate 800 */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0f172a; /* Slate 900 */
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800 flex flex-col">
+
+    <div class="flex-grow p-4 md:p-8">
+        <div class="max-w-7xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-lg border-t-4 border-yellow-400">
+            
+            <h1 class="text-2xl md:text-3xl font-bold mb-6 text-center text-slate-800">🧹 Gemini Citation Remover</h1>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-blue-800">
+                <h4 class="text-lg mb-1">This tool removes Gemini citation markers while preserving document structure and fixing markdown formatting issues from using Google Gemini 3.0, 2.5 Pro &amp; Flash.</h4>
+               </div>
+
+            <div class="mb-8">
+                <label for="input-text" class="block text-sm font-medium mb-2 text-gray-700">📥 Paste your text with citations here:</label>
+                <textarea id="input-text" class="w-full p-4 border-2 border-gray-200 rounded-lg font-mono text-sm focus:outline-none focus:border-slate-500 h-48 transition-colors" placeholder="Paste your text with Gemini citations here..."></textarea>
+
+                <div class="flex flex-wrap gap-4 justify-center mt-4">
+                    <button class="btn-primary py-2 px-8 rounded-md font-medium shadow-sm transition-transform hover:-translate-y-0.5" onclick="removeCitations()">Remove Citations</button>
+                    <button class="bg-gray-100 text-gray-600 border border-gray-300 py-2 px-6 rounded-md font-medium hover:bg-gray-200 transition-colors" onclick="clearAll()">Clear All</button>
+                </div>
+
+                <div class="hidden bg-green-100 border border-green-200 text-green-800 p-3 rounded mt-4 text-center" id="success-message">
+                    ✅ Citations removed successfully!
+                </div>
+
+                <div class="hidden bg-gray-50 p-4 rounded mt-4 text-sm text-gray-600" id="stats"></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="flex flex-col h-full">
+                    <label for="output-text" class="block text-sm font-medium mb-2 text-gray-700">📤 Clean Text (Markdown/Plain):</label>
+                    <textarea id="output-text" readonly class="flex-grow w-full p-4 border-2 border-gray-200 rounded-lg font-mono text-sm focus:outline-none bg-gray-50 min-h-[400px]" placeholder="Cleaned text will appear here..."></textarea>
+                    <div class="mt-4 flex justify-center">
+                        <button class="bg-white border border-gray-300 text-gray-700 py-2 px-6 rounded-md hover:bg-gray-50 font-medium shadow-sm" onclick="copyToClipboard()">📋 Copy Clean Text</button>
+                    </div>
+                </div>
+
+                <div class="flex flex-col h-full">
+                    <label class="block text-sm font-medium mb-2 text-gray-700">🌐 HTML Output:</label>
+
+                    <div class="flex gap-1 mb-0">
+                        <button class="px-5 py-2 bg-white text-slate-800 border-2 border-b-0 border-gray-200 rounded-t-lg font-medium z-10" onclick="switchTab('preview')" id="btn-preview">Formatted Preview</button>
+                        <button class="px-5 py-2 bg-gray-100 text-gray-500 border-none rounded-t-lg font-medium hover:bg-gray-200" onclick="switchTab('source')" id="btn-source">Raw HTML</button>
+                    </div>
+
+                    <div class="border-2 border-gray-200 rounded-b-lg rounded-tr-lg bg-white h-[400px] flex flex-col overflow-hidden relative">
+                        <div id="html-preview" class="p-4 overflow-y-auto flex-grow prose prose-sm max-w-none"></div>
+                        <div id="html-source-container" class="hidden h-full">
+                            <textarea id="html-source" readonly class="w-full h-full p-4 border-none resize-none font-mono text-sm focus:outline-none"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 flex gap-4 justify-center">
+                        <button class="bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 font-medium shadow-sm" onclick="copyToClipboardHtml()">📋 Copy HTML Formatted</button>
+                        <button class="bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 font-medium shadow-sm" onclick="copyHtmlSource()">📋 Copy HTML Code</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 pt-8 border-t border-gray-100">
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">🛡️ Privacy First</h4>
+                    <p class="text-sm text-gray-600">100% client-side processing. Your text never leaves your browser. No servers, no tracking.</p>
+                </div>
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">⚡ Blazing Fast</h4>
+                    <p class="text-sm text-gray-600">Instant removal of citation markers and formatting fixes. Works offline.</p>
+                </div>
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">📝 Rich Text Ready</h4>
+                    <p class="text-sm text-gray-600">Automatically converts to clean HTML for pasting into Google Docs or Word.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-auto">
+        <svg class="w-full h-16 md:h-24 lg:h-32 text-slate-800" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path fill-opacity="1" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+        </svg>
+        <div class="bg-slate-800 text-white py-6 text-center">
+            <p class="font-medium text-lg tracking-wide">Developed by Reem Alashhab using Gemini 3 Pro</p>
+        </div>
+    </footer>
+      
+    <script>
+        function removeCitations() {
+            const inputText = document.getElementById('input-text').value;
+
+            if (!inputText.trim()) {
+                alert('Please paste some text first!');
+                return;
+            }
+
+            const citeStartCount = (inputText.match(/\[cite_start\]/g) || []).length;
+            const citeWithNumbersCount = (inputText.match(/\+\]/g) || []).length;
+            const citeEndCount = (inputText.match(/\[cite_end\]/g) || []).length;
+
+            let cleanText = inputText
+                .replace(/\[cite_start\]/g, '')
+                .replace(/\+\]/g, '')
+                .replace(/\[cite_end\]/g, '')
+                .replace(/\[cite[^\]]*\]/g, '')
+                .replace(/^\* (\*\*)/gm, '- $1') 
+                .replace(/[ \t]+/g, ' ')
+                .replace(/[ \t]+$/gm, '')
+                .replace(/^[ \t]+/gm, '');
+
+            document.getElementById('output-text').value = cleanText;
+            const htmlContent = marked.parse(cleanText);
+            document.getElementById('html-preview').innerHTML = htmlContent;
+            document.getElementById('html-source').value = htmlContent;
+
+            const totalRemoved = citeStartCount + citeWithNumbersCount + citeEndCount;
+            const statsDiv = document.getElementById('stats');
+            statsDiv.innerHTML = `
+                <strong>Statistics:</strong>
+                : ${citeStartCount} | 
+                [+]: ${citeWithNumbersCount} | 
+                [cite_end]: ${citeEndCount} | 
+                <strong>Total removed: ${totalRemoved}</strong>
+            `;
+            statsDiv.classList.remove('hidden');
+
+            const successMsg = document.getElementById('success-message');
+            successMsg.classList.remove('hidden');
+            setTimeout(() => {
+                successMsg.classList.add('hidden');
+            }, 3000);
+        }
+
+        function switchTab(tabName) {
+            const previewBtn = document.getElementById('btn-preview');
+            const sourceBtn = document.getElementById('btn-source');
+            const previewDiv = document.getElementById('html-preview');
+            const sourceDiv = document.getElementById('html-source-container');
+
+            if (tabName === 'preview') {
+                previewBtn.className = "px-5 py-2 bg-white text-slate-800 border-2 border-b-0 border-gray-200 rounded-t-lg font-medium z-10";
+                sourceBtn.className = "px-5 py-2 bg-gray-100 text-gray-500 border-none rounded-t-lg font-medium hover:bg-gray-200";
+                previewDiv.style.display = 'block';
+                sourceDiv.style.display = 'none';
+            } else {
+                sourceBtn.className = "px-5 py-2 bg-white text-slate-800 border-2 border-b-0 border-gray-200 rounded-t-lg font-medium z-10";
+                previewBtn.className = "px-5 py-2 bg-gray-100 text-gray-500 border-none rounded-t-lg font-medium hover:bg-gray-200";
+                sourceDiv.style.display = 'block';
+                previewDiv.style.display = 'none';
+            }
+        }
+
+        function clearAll() {
+            document.getElementById('input-text').value = '';
+            document.getElementById('output-text').value = '';
+            document.getElementById('html-preview').innerHTML = '';
+            document.getElementById('html-source').value = '';
+            document.getElementById('stats').classList.add('hidden');
+            document.getElementById('success-message').classList.add('hidden');
+        }
+
+        function copyToClipboard() {
+            const outputText = document.getElementById('output-text');
+            copyToClipboardGeneric(outputText, event.target);
+        }
+
+        function copyToClipboardHtml() {
+            const htmlSource = document.getElementById('html-source').value;
+            if (!htmlSource.trim()) {
+                alert('No content to copy! Please remove citations first.');
+                return;
+            }
+            try {
+                const blob = new Blob([htmlSource], { type: 'text/html' });
+                const plainTextBlob = new Blob([document.getElementById('output-text').value], { type: 'text/plain' });
+                const item = new ClipboardItem({ 'text/html': blob, 'text/plain': plainTextBlob });
+                navigator.clipboard.write([item]).then(() => { showCopyFeedback(event.target); });
+            } catch (err) {
+                copyToClipboardGeneric(document.getElementById('html-source'), event.target);
+            }
+        }
+
+        function copyHtmlSource() {
+            const sourceText = document.getElementById('html-source');
+            copyToClipboardGeneric(sourceText, event.target);
+        }
+
+        function copyToClipboardGeneric(element, btn) {
+            if (!element.value.trim()) {
+                alert('No text to copy!');
+                return;
+            }
+            element.select();
+            try {
+                document.execCommand('copy');
+                showCopyFeedback(btn);
+            } catch (err) {
+                alert('Failed to copy text.');
+            }
+        }
+
+        function showCopyFeedback(btn) {
+            const originalText = btn.textContent;
+            btn.textContent = '✅ Copied!';
+            btn.style.backgroundColor = '#34a853';
+            btn.style.color = 'white';
+            btn.style.borderColor = '#34a853';
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.backgroundColor = '';
+                btn.style.color = '';
+                btn.style.borderColor = '';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

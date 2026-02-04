@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Case Converter</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* Unified Button Styles */
+        .btn-primary {
+            background-color: #1e293b; /* Slate 800 */
+            color: white;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #0f172a; /* Slate 900 */
+            transform: translateY(-2px);
+        }
+        
+        .btn-option {
+            background-color: #eff6ff; /* Blue 50 */
+            color: #1e40af; /* Blue 800 */
+            border: 1px solid #dbeafe; /* Blue 200 */
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .btn-option:hover {
+            background-color: #dbeafe; /* Blue 100 */
+            transform: translateY(-1px);
+        }
+        .btn-option:active {
+            background-color: #2563eb;
+            color: white;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800 flex flex-col">
+
+    <div class="flex-grow p-4 md:p-8">
+        <div class="max-w-7xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-lg border-t-4 border-yellow-400">
+            
+            <h1 class="text-2xl md:text-3xl font-bold mb-2 text-center text-slate-800">🔠 Case Converter</h1>
+            <p class="text-center text-gray-500 mb-8">Force text into standard formats. Fix headers and accidental caps.</p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                
+                <div class="flex flex-col h-full">
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="inputText" class="text-sm font-medium text-gray-700">📥 Original Text</label>
+                        <button onclick="resetText()" class="text-sm text-gray-500 hover:text-red-500 transition-colors">Reset</button>
+                    </div>
+                    <textarea id="inputText" class="flex-grow w-full p-4 border-2 border-gray-200 rounded-lg font-mono text-sm focus:outline-none focus:border-slate-500 h-96 transition-colors resize-none" placeholder="Paste text here..." oninput="autoConvert()"></textarea>
+                </div>
+
+                <div class="flex flex-col h-full">
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="outputText" class="text-sm font-medium text-gray-700">📤 Converted Text</label>
+                        <span id="copyFeedback" class="text-sm font-medium text-green-600 opacity-0 transition-opacity">✅ Copied!</span>
+                    </div>
+                    <textarea id="outputText" readonly class="flex-grow w-full p-4 border-2 border-gray-200 rounded-lg font-mono text-sm focus:outline-none bg-gray-50 h-96 resize-none" placeholder="Result appears here..."></textarea>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+                <h4 class="text-slate-800 font-bold mb-4 flex items-center gap-2">⚙️ Select Format</h4>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <button onclick="setMode('upper')" class="btn-option py-3 px-4 rounded-md shadow-sm text-center">
+                        UPPERCASE
+                    </button>
+                    <button onclick="setMode('lower')" class="btn-option py-3 px-4 rounded-md shadow-sm text-center">
+                        lowercase
+                    </button>
+                    <button onclick="setMode('title')" class="btn-option py-3 px-4 rounded-md shadow-sm text-center">
+                        Title Case
+                    </button>
+                    <button onclick="setMode('sentence')" class="btn-option py-3 px-4 rounded-md shadow-sm text-center">
+                        Sentence case
+                    </button>
+                </div>
+                <p id="currentModeLabel" class="text-xs text-blue-600 mt-3 text-center font-medium">Current Mode: Sentence case</p>
+            </div>
+
+            <div class="flex justify-center mb-8">
+                <button class="btn-primary py-3 px-10 rounded-md font-medium shadow-lg text-lg" onclick="copyText()">📋 Copy Result</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 border-t border-gray-100">
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">🛡️ Privacy First</h4>
+                    <p class="text-sm text-gray-600">100% client-side processing. Text stays on your device.</p>
+                </div>
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">⚡ Instant Fix</h4>
+                    <p class="text-sm text-gray-600">Repair accidental caps lock or messy formatting in seconds.</p>
+                </div>
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">📝 Style Consistent</h4>
+                    <p class="text-sm text-gray-600">Standardize headings and titles across your Canvas pages.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-auto">
+        <svg class="w-full h-16 md:h-24 lg:h-32 text-slate-800" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path fill-opacity="1" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+        </svg>
+        <div class="bg-slate-800 text-white py-6 text-center">
+            <p class="font-medium text-lg tracking-wide">Developed by Reem Alashhab using Gemini 3 Pro</p>
+        </div>
+    </footer>
+
+    <script>
+        let currentMode = 'sentence';
+
+        function setMode(mode) {
+            currentMode = mode;
+            
+            // Update UI Label
+            const labels = {
+                'upper': 'UPPERCASE',
+                'lower': 'lowercase',
+                'title': 'Title Case',
+                'sentence': 'Sentence case'
+            };
+            document.getElementById('currentModeLabel').innerText = `Current Mode: ${labels[mode]}`;
+            
+            // Trigger conversion
+            processText();
+        }
+
+        function resetText() {
+            document.getElementById('inputText').value = '';
+            processText();
+        }
+
+        function autoConvert() {
+            processText();
+        }
+
+        async function copyText() {
+            const output = document.getElementById('outputText');
+            output.select();
+            try {
+                await navigator.clipboard.writeText(output.value);
+                
+                const feedback = document.getElementById('copyFeedback');
+                feedback.classList.remove('opacity-0');
+                
+                const btn = document.querySelector('.btn-primary');
+                const originalText = btn.innerText;
+                btn.innerText = '✅ Copied!';
+                
+                setTimeout(() => {
+                    feedback.classList.add('opacity-0');
+                    btn.innerText = originalText;
+                }, 2000);
+            } catch (err) {
+                alert('Failed to copy text');
+            }
+        }
+
+        function processText() {
+            let text = document.getElementById('inputText').value;
+            
+            if (!text) {
+                document.getElementById('outputText').value = '';
+                return;
+            }
+
+            let result = '';
+
+            switch (currentMode) {
+                case 'upper':
+                    result = text.toUpperCase();
+                    break;
+                case 'lower':
+                    result = text.toLowerCase();
+                    break;
+                case 'title':
+                    // Capitalize first letter of every word
+                    result = text.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+                    break;
+                case 'sentence':
+                    // Lowercase everything first
+                    text = text.toLowerCase();
+                    // Capitalize first letter of string
+                    text = text.charAt(0).toUpperCase() + text.slice(1);
+                    // Capitalize letters following [.?!] and whitespace
+                    result = text.replace(/([.?!]\s+)(\w)/g, (match, p1, p2) => p1 + p2.toUpperCase());
+                    // Also handle new lines
+                    result = result.replace(/(\n+)(\w)/g, (match, p1, p2) => p1 + p2.toUpperCase());
+                    break;
+            }
+
+            document.getElementById('outputText').value = result;
+        }
+    </script>
+</body>
+</html>

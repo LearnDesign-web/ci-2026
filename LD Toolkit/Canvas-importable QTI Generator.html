@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Text → Canvas QTI XML Generator</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+      .btn-primary {
+          background-color: #1e293b;
+          color: white;
+          transition: all 0.2s;
+      }
+      .btn-primary:hover {
+          background-color: #0f172a;
+          transform: translateY(-1px);
+      }
+  </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800 flex flex-col">
+
+<div class="flex-grow p-4 md:p-8">
+    <div class="max-w-6xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-lg border-t-4 border-yellow-400">
+        
+        <h1 class="text-2xl font-bold mb-1 text-slate-800">📝 Quiz Text → Canvas QTI XML + ZIP</h1>
+        <p class="text-sm text-gray-500 mb-6">
+          Paste quiz text on the left. Convert. Download QTI zip. Import into Canvas.
+        </p>
+
+        <div class="flex flex-wrap gap-6 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
+          <label class="flex items-center space-x-2 cursor-pointer">
+              <input id="includeIntroItem" type="checkbox" class="w-4 h-4 text-slate-800 rounded focus:ring-slate-800"> 
+              <span class="text-sm font-medium">Include title and instructions as INTRO item</span>
+          </label>
+          <label class="flex items-center space-x-2 cursor-pointer">
+              <input id="includeModelInSA" type="checkbox" checked class="w-4 h-4 text-slate-800 rounded focus:ring-slate-800"> 
+              <span class="text-sm font-medium">Include model answer in Short Answer feedback</span>
+          </label>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div>
+              <label class="block text-sm font-bold mb-1 text-gray-700">📥 Input Text</label>
+              <textarea id="input" class="w-full h-[520px] p-4 border-2 border-gray-200 rounded-lg font-mono text-sm focus:outline-none focus:border-slate-500 transition-colors leading-relaxed" placeholder="Paste quiz text here..."></textarea>
+          </div>
+          <div>
+              <label class="block text-sm font-bold mb-1 text-gray-700">📤 QTI XML Output</label>
+              <textarea id="output" readonly class="w-full h-[520px] p-4 border-2 border-gray-200 rounded-lg font-mono text-sm bg-gray-50 focus:outline-none leading-relaxed" placeholder="QTI XML generated output..."></textarea>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <div>
+              <label class="block text-sm font-bold mb-1 text-gray-700">📄 Manifest (imsmanifest.xml)</label>
+              <textarea id="manifestOut" readonly class="w-full h-[150px] p-4 border-2 border-gray-200 rounded-lg font-mono text-sm bg-gray-50 focus:outline-none" placeholder="imsmanifest.xml"></textarea>
+          </div>
+          <div>
+              <label class="block text-sm font-bold mb-1 text-gray-700">ℹ️ Status Log</label>
+              <textarea id="status" readonly class="w-full h-[150px] p-4 border-2 border-gray-200 rounded-lg font-mono text-sm bg-gray-50 focus:outline-none text-blue-600" placeholder="Ready..."></textarea>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4 pt-4 border-t border-gray-100">
+          <button onclick="convert()" class="btn-primary py-2 px-6 rounded-md font-medium shadow-sm">🔄 Convert</button>
+          <button onclick="downloadZip()" class="bg-green-600 text-white py-2 px-6 rounded-md font-medium shadow-sm hover:bg-green-700 transition-colors">⬇️ Download QTI zip</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 pt-8 border-t border-gray-100">
+            <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">🛡️ Secure Conversion</h4>
+                <p class="text-sm text-gray-600">Processing happens entirely in your browser. No quiz content is uploaded to servers.</p>
+            </div>
+            <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">⚡ Rapid Authoring</h4>
+                <p class="text-sm text-gray-600">Draft assessments in plain text and convert them instantly. Bypass the slow, click-heavy LMS interface.</p>
+            </div>
+            <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">🎓 Canvas Ready</h4>
+                <p class="text-sm text-gray-600">Generates standard QTI 1.2 compliant ZIP packages designed specifically for seamless import into Canvas LMS.</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<footer class="mt-auto">
+    <svg class="w-full h-16 md:h-24 lg:h-32 text-slate-800" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path fill-opacity="1" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+    </svg>
+    <div class="bg-slate-800 text-white py-6 text-center">
+        <p class="font-medium text-lg tracking-wide">Developed by Reem Alashhab using Gemini 3 Pro</p>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+<script>
+let lastQuizXml = "";
+let lastManifestXml = "";
+
+function escapeXml(str) {
+  return (str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function preserveIndent(text) {
+  return text.split("\n").map(line => {
+    const m = line.match(/^(\s+)(.*)$/);
+    if (!m) return escapeXml(line);
+    return "&nbsp;".repeat(m[1].length) + escapeXml(m[2]);
+  }).join("\n");
+}
+
+function norm(s) {
+  return (s ?? "")
+    .replace(/[“”"]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function splitQuestions(text) {
+  const lines = text.replace(/\r/g, "").split("\n");
+  const idx = lines.map((l, i) => /^Question\s+\d+/i.test(l.trim()) ? i : -1).filter(i => i >= 0);
+  const intro = lines.slice(0, idx[0]).join("\n").trim();
+  const qs = idx.map((start, i) => lines.slice(start, idx[i+1] ?? lines.length).join("\n").trim());
+  return { intro, qs };
+}
+
+function parseQuestion(chunk) {
+  const lines = chunk.split("\n");
+  const qNum = lines[0].match(/\d+/)[0];
+
+  const typeLine = lines.find(l => /^Type:/i.test(l));
+  const type = /SHORT/i.test(typeLine) ? "SA" : /TRUE/i.test(typeLine) ? "TF" : "MCQ";
+
+  const correctIdx = lines.findIndex(l => /^Correct Answer:/i.test(l));
+  let correct = lines[correctIdx].replace(/^Correct Answer:/i, "").trim();
+
+  if (!correct) {
+    for (let i = correctIdx + 1; i < lines.length; i++) {
+      if (/^Feedback:/i.test(lines[i])) break;
+      if (lines[i].trim()) { correct = lines[i].trim(); break; }
+    }
+  }
+
+  const feedbackIdx = lines.findIndex(l => /^Feedback:/i.test(l));
+  const fbLines = feedbackIdx >= 0 ? lines.slice(feedbackIdx + 1) : [];
+
+  let fbC = "", fbI = "";
+  fbLines.forEach(l => {
+    l = l.replace(/^\*\s*/, "");
+    if (/^Correct:/i.test(l)) fbC = l.replace(/^Correct:/i, "").trim();
+    if (/^Incorrect:/i.test(l)) fbI = l.replace(/^Incorrect:/i, "").trim();
+  });
+
+  const between = lines.slice(lines.indexOf(typeLine) + 1, correctIdx);
+  const stem = [];
+  const options = [];
+  let afterBlank = false;
+
+  between.forEach(l => {
+    if (!l.trim()) { afterBlank = true; return; }
+    const bullet = l.trim().match(/^[•\u2022]\s*(.+)$/);
+    if (bullet) options.push(bullet[1]);
+    else if (afterBlank) options.push(l.trim());
+    else stem.push(l);
+  });
+
+  return { qNum, type, stem: stem.join("\n"), options, correct, fbC, fbI };
+}
+
+function buildMCQ(q) {
+  const ids = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const choices = q.options.map((o, i) => ({ id: ids[i], text: o }));
+
+  let correctId = "";
+  choices.forEach(c => { if (norm(c.text) === norm(q.correct)) correctId = c.id; });
+
+  if (!correctId && /^[A-Z]$/.test(q.correct.trim())) correctId = q.correct.trim();
+
+  if (!correctId) throw new Error(`Question ${q.qNum}: could not match Correct Answer to any option.`);
+
+  return `
+<item ident="Q${q.qNum}" title="Question ${q.qNum}">
+  <presentation>
+    <material><mattext>${preserveIndent(q.stem)}</mattext></material>
+    <response_lid ident="resp" rcardinality="Single">
+      <render_choice>
+${choices.map(c => `<response_label ident="${c.id}"><material><mattext>${escapeXml(c.text)}</mattext></material></response_label>`).join("\n")}
+      </render_choice>
+    </response_lid>
+  </presentation>
+  <itemfeedback ident="fb_correct"><material><mattext>${escapeXml(q.fbC)}</mattext></material></itemfeedback>
+  <itemfeedback ident="fb_incorrect"><material><mattext>${escapeXml(q.fbI)}</mattext></material></itemfeedback>
+  <resprocessing>
+    <outcomes><decvar varname="SCORE" vartype="Decimal" minvalue="0" maxvalue="1"/></outcomes>
+    <respcondition continue="No"><conditionvar><varequal respident="resp">${correctId}</varequal></conditionvar><setvar action="Set">1</setvar><displayfeedback feedbacktype="Response" linkrefid="fb_correct"/></respcondition>
+    <respcondition continue="No"><conditionvar><other/></conditionvar><setvar action="Set">0</setvar><displayfeedback feedbacktype="Response" linkrefid="fb_incorrect"/></respcondition>
+  </resprocessing>
+</item>`;
+}
+
+function buildSA(q, includeModel) {
+  const fb = [];
+  if (includeModel) fb.push("Model answer: " + q.correct);
+  if (q.fbC) fb.push("Guidance: " + q.fbC);
+
+  return `
+<item ident="Q${q.qNum}" title="Question ${q.qNum}">
+  <presentation>
+    <material><mattext>${preserveIndent(q.stem)}</mattext></material>
+    <response_str ident="resp" rcardinality="Single"><render_fib fibtype="String"><response_label ident="A"/></render_fib></response_str>
+  </presentation>
+  <itemfeedback ident="fb_general"><material><mattext>${preserveIndent(fb.join("\n\n"))}</mattext></material></itemfeedback>
+</item>`;
+}
+
+function buildManifest() {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="MANIFEST1"
+ xmlns="http://www.imsglobal.org/xsd/imscp_v1p1"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.imsglobal.org/xsd/imscp_v1p1 http://www.imsglobal.org/xsd/imscp_v1p1.xsd">
+ <organizations/>
+ <resources>
+  <resource identifier="RES1" type="imsqti_xmlv1p2" href="quiz.xml">
+   <file href="quiz.xml"/>
+  </resource>
+ </resources>
+</manifest>`;
+}
+
+function convert() {
+  try {
+    const raw = document.getElementById("input").value;
+    const { intro, qs } = splitQuestions(raw);
+    const includeIntro = document.getElementById("includeIntroItem").checked;
+    const includeModel = document.getElementById("includeModelInSA").checked;
+
+    const items = [];
+    if (includeIntro && intro) items.push(`<item ident="INTRO"><presentation><material><mattext>${preserveIndent(intro)}</mattext></material></presentation></item>`);
+
+    qs.forEach(qc => {
+      const q = parseQuestion(qc);
+      items.push(q.type === "SA" ? buildSA(q, includeModel) : buildMCQ(q));
+    });
+
+    lastQuizXml = `<?xml version="1.0" encoding="utf-8"?><questestinterop>${items.join("")}</questestinterop>`;
+    lastManifestXml = buildManifest();
+
+    document.getElementById("output").value = lastQuizXml;
+    document.getElementById("manifestOut").value = lastManifestXml;
+    document.getElementById("status").value = "OK. Download QTI zip.";
+
+  } catch (e) {
+    document.getElementById("status").value = e.message;
+  }
+}
+
+async function downloadZip() {
+  const zip = new JSZip();
+  zip.file("quiz.xml", lastQuizXml);
+  zip.file("imsmanifest.xml", lastManifestXml);
+  const blob = await zip.generateAsync({ type: "blob" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "qti.zip";
+  a.click();
+}
+</script>
+
+</body>
+</html>

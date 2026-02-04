@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Document Branding Tool</title>
+    
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css" />
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #FCD34D;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .btn-primary {
+            background-color: #1e293b; /* Slate 800 */
+            color: #fff;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #0f172a; /* Slate 900 */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800 flex flex-col">
+
+    <div class="flex-grow p-8">
+        <div class="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg border-t-4 border-yellow-400">
+            <h1 class="text-2xl font-bold mb-2 text-slate-800">🎨 Word Document Branding Tool</h1>
+            <p class="text-gray-600 mb-6">
+                Upload your <strong>.docx</strong> template and the documents you want to style.
+            </p>
+
+            <div class="space-y-6">
+                
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-slate-700">📄 1. Upload Brand Template (.docx)</label>
+                    <input type="file" id="template_input" accept=".docx" class="block w-full text-sm text-gray-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-yellow-50 file:text-yellow-700
+                        hover:file:bg-yellow-100
+                    "/>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-slate-700">📥 2. Upload Documents to Brand (.docx)</label>
+                    <input type="file" id="docs_input" multiple accept=".docx" class="block w-full text-sm text-gray-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-gray-100 file:text-gray-700
+                        hover:file:bg-gray-200
+                    "/>
+                </div>
+
+                <div class="flex items-center space-x-4 pt-4 border-t border-gray-100">
+                    <button id="process_btn" py-click="process_documents" class="btn-primary py-2 px-6 rounded-md font-medium flex items-center shadow-sm">
+                        <span>✨ Apply Branding</span>
+                    </button>
+                    <div id="loader" class="loader"></div>
+                    <span id="status_msg" class="text-sm text-gray-500 italic">Initializing Python environment...</span>
+                </div>
+
+                <div id="download_area" class="hidden bg-green-50 p-4 rounded-md border border-green-200">
+                    <p class="text-green-800 mb-2 font-medium">✅ Success! Your files are ready.</p>
+                    <div id="download_links"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 pt-8 border-t border-gray-100">
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">🛡️ Secure & Private</h4>
+                    <p class="text-sm text-gray-600">100% client-side processing using WebAssembly. Your confidential documents never leave your browser.</p>
+                </div>
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">⚡ Bulk Automation</h4>
+                    <p class="text-sm text-gray-600">Apply corporate branding to dozens of documents simultaneously. Save hours of manual reformatting.</p>
+                </div>
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">📂 Zero Setup</h4>
+                    <p class="text-sm text-gray-600">Powered by PyScript. Run complex Python automation instantly without installing software or libraries.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <footer class="mt-auto">
+        <svg class="w-full h-16 md:h-24 lg:h-32 text-slate-800" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path fill-opacity="1" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+        </svg>
+        <div class="bg-slate-800 text-white py-6 text-center">
+            <p class="font-medium text-lg tracking-wide">Developed by Reem Alashhab using Gemini 3 Pro</p>
+        </div>
+    </footer>
+
+    <py-config>
+        packages = ["python-docx"]
+    </py-config>
+
+    <py-script>
+        import js
+        from js import document, console, Uint8Array, Blob, URL
+        from docx import Document
+        import io
+        import copy
+        import zipfile
+        from pyodide.ffi import create_proxy
+
+        async def process_documents(event):
+            loader = document.getElementById("loader")
+            status = document.getElementById("status_msg")
+            download_area = document.getElementById("download_area")
+            
+            loader.style.display = "block"
+            status.innerText = "Reading files..."
+            download_area.classList.add("hidden")
+
+            try:
+                tpl_input = document.getElementById("template_input")
+                docs_input = document.getElementById("docs_input")
+
+                if not tpl_input.files or not docs_input.files:
+                    status.innerText = "Please select both a template and at least one document."
+                    loader.style.display = "none"
+                    return
+
+                # Read Template
+                tpl_file = tpl_input.files.item(0)
+                tpl_array_buf = await tpl_file.arrayBuffer()
+                tpl_bytes = tpl_array_buf.to_bytes()
+                
+                # Initialize ZIP
+                zip_buffer = io.BytesIO()
+                
+                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                    
+                    files = docs_input.files
+                    for i in range(files.length):
+                        file = files.item(i)
+                        status.innerText = f"Processing {file.name}..."
+                        
+                        src_array_buf = await file.arrayBuffer()
+                        src_bytes = src_array_buf.to_bytes()
+                        
+                        # --- CORE LOGIC START ---
+                        tpl_doc = Document(io.BytesIO(tpl_bytes))
+                        src_doc = Document(io.BytesIO(src_bytes))
+                        
+                        tpl_body = tpl_doc.element.body
+                        src_body = src_doc.element.body
+                        
+                        # Clean template
+                        elements_to_remove = []
+                        for element in tpl_body:
+                            if element.tag.endswith('sectPr'):
+                                continue
+                            elements_to_remove.append(element)
+                        for element in elements_to_remove:
+                            tpl_body.remove(element)
+                            
+                        # Find insertion point
+                        tpl_sect_pr = None
+                        if len(tpl_body) > 0 and tpl_body[-1].tag.endswith('sectPr'):
+                            tpl_sect_pr = tpl_body[-1]
+                            
+                        # Copy content
+                        for element in src_body:
+                            if element.tag.endswith('sectPr'):
+                                continue
+                            new_element = copy.deepcopy(element)
+                            
+                            if tpl_sect_pr is not None:
+                                tpl_body.insert(tpl_body.index(tpl_sect_pr), new_element)
+                            else:
+                                tpl_body.append(new_element)
+                        # --- CORE LOGIC END ---
+
+                        # Save to memory
+                        out_stream = io.BytesIO()
+                        tpl_doc.save(out_stream)
+                        zip_file.writestr(f"branded_{file.name}", out_stream.getvalue())
+
+                # Finalize
+                status.innerText = "Finalizing..."
+                content = zip_buffer.getvalue()
+                js_array = Uint8Array.new(len(content))
+                js_array.assign(content)
+                
+                blob = Blob.new([js_array], {type: "application/zip"})
+                url = URL.createObjectURL(blob)
+                
+                link = document.createElement("a")
+                link.href = url
+                link.download = "branded_documents.zip"
+                link.innerText = "⬇️ Download Branded Documents (.zip)"
+                link.className = "text-green-600 hover:text-green-800 font-bold underline text-lg"
+                
+                dl_container = document.getElementById("download_links")
+                dl_container.innerHTML = ""
+                dl_container.appendChild(link)
+                
+                status.innerText = "Done!"
+                download_area.classList.remove("hidden")
+
+            except Exception as e:
+                console.error(e)
+                status.innerText = f"Error: {str(e)}"
+            
+            finally:
+                loader.style.display = "none"
+
+        document.getElementById("status_msg").innerText = "Ready to process."
+    </py-script>
+</body>
+</html>

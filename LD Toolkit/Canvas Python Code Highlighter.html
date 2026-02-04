@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Canvas Page Highlighter: Python (VS Code Light)</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+      .btn-primary {
+          background-color: #1e293b; /* Slate 800 */
+          color: white;
+          transition: all 0.2s;
+      }
+      .btn-primary:hover {
+          background-color: #0f172a; /* Slate 900 */
+          transform: translateY(-1px);
+      }
+      /* Custom scrollbar for code areas */
+      textarea::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+      }
+      textarea::-webkit-scrollbar-track {
+          background: #f1f5f9; 
+      }
+      textarea::-webkit-scrollbar-thumb {
+          background: #cbd5e1; 
+          border-radius: 4px;
+      }
+      textarea::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8; 
+      }
+  </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800 flex flex-col">
+
+<div class="flex-grow p-4 md:p-8">
+    <div class="max-w-7xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-lg border-t-4 border-yellow-400">
+        
+        <h1 class="text-2xl font-bold mb-1 text-slate-800">🐍 Canvas Page Highlighter: Python</h1>
+        <p class="text-sm text-gray-500 mb-6">
+          Paste full Canvas page HTML on the left. Convert. Paste the output into Canvas HTML view.
+        </p>
+
+        <div class="flex flex-wrap gap-6 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100 items-center">
+            <span class="text-sm font-bold text-slate-700 uppercase tracking-wide">⚙️ Settings:</span>
+            
+            <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors">
+                <input id="onlyTagged" type="checkbox" checked class="w-4 h-4 text-slate-800 rounded focus:ring-slate-800 accent-slate-800" />
+                <span class="text-sm font-medium">Only enforce tags for PRE blocks</span>
+            </label>
+            
+            <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors">
+                <input id="alsoInline" type="checkbox" checked class="w-4 h-4 text-slate-800 rounded focus:ring-slate-800 accent-slate-800" />
+                <span class="text-sm font-medium">Highlight inline CODE</span>
+            </label>
+            
+            <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors">
+                <input id="forceRehighlight" type="checkbox" checked class="w-4 h-4 text-slate-800 rounded focus:ring-slate-800 accent-slate-800" />
+                <span class="text-sm font-medium">Force rehighlight</span>
+            </label>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="flex flex-col">
+                <label class="block text-sm font-bold mb-2 text-gray-700 flex items-center gap-2">
+                    📥 Input HTML <span class="text-xs font-normal text-gray-400">(Paste Raw Canvas HTML)</span>
+                </label>
+                <textarea id="htmlInput" class="w-full h-[560px] p-4 border-2 border-gray-200 rounded-lg font-mono text-sm focus:outline-none focus:border-slate-500 transition-colors leading-relaxed resize-none" placeholder="Paste full Canvas page HTML here..."></textarea>
+            </div>
+            
+            <div class="flex flex-col">
+                <label class="block text-sm font-bold mb-2 text-gray-700 flex items-center gap-2">
+                    📤 Output HTML <span class="text-xs font-normal text-gray-400">(Copy to Canvas)</span>
+                </label>
+                <textarea id="htmlOutput" readonly class="w-full h-[560px] p-4 border-2 border-gray-200 rounded-lg font-mono text-sm bg-gray-50 text-slate-600 focus:outline-none leading-relaxed resize-none" placeholder="Converted Canvas page HTML appears here..."></textarea>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4 pt-4 border-t border-gray-100">
+            <button id="convertBtn" type="button" class="btn-primary py-2 px-6 rounded-md font-medium shadow-sm flex items-center gap-2">
+                ⚡ Convert Page
+            </button>
+            <button id="copyBtn" type="button" class="bg-white border border-gray-300 text-slate-700 hover:bg-gray-50 py-2 px-6 rounded-md font-medium shadow-sm transition-colors flex items-center gap-2">
+                📋 Copy Output
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 pt-8 border-t border-gray-100">
+            <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">🎨 VS Code Styling</h4>
+                <p class="text-sm text-gray-600">Applies exact VS Code Light syntax highlighting colors so students see code exactly as they would in their IDE.</p>
+            </div>
+            <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">🏫 Canvas Native</h4>
+                <p class="text-sm text-gray-600">Outputs clean inline styles that render perfectly in Canvas LMS without needing external CSS or plugins.</p>
+            </div>
+            <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">🧠 Smart Detection</h4>
+                <p class="text-sm text-gray-600">Automatically identifies Python code within your HTML page structure, styling both code blocks and inline snippets.</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<footer class="mt-auto">
+    <svg class="w-full h-16 md:h-24 lg:h-32 text-slate-800" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path fill-opacity="1" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+    </svg>
+    <div class="bg-slate-800 text-white py-6 text-center">
+        <p class="font-medium text-lg tracking-wide">Developed by Reem Alashhab using Gemini 3 Pro</p>
+    </div>
+</footer>
+
+<script>
+  const VS_LIGHT = {
+    text: "#000000",
+    keyword: "#0000ff",
+    string: "#A31515",
+    number: "#098658",
+    comment: "#6A9955",
+    call: "#795E26"
+  };
+
+  const PY_KEYWORDS = new Set([
+    "False","None","True","and","as","assert","async","await","break","class","continue",
+    "def","del","elif","else","except","finally","for","from","global","if","import","in",
+    "is","lambda","nonlocal","not","or","pass","raise","return","try","while","with","yield"
+  ]);
+
+  const PY_BUILTINS = new Set([
+    "print","len","range","int","float","str","bool","list","dict","set","tuple","type",
+    "input","sum","min","max","abs","sorted","enumerate","zip","map","filter","any","all",
+    "open","help"
+  ]);
+
+  function escapeHtml(s) {
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function looksLikePython(text) {
+    const t = (text || "").trim();
+    if (!t) return false;
+
+    const signals = [
+      /\bdef\s+\w+\s*\(/,
+      /\bclass\s+\w+\s*[:\(]/,
+      /\bimport\s+\w+/,
+      /\bfrom\s+\w+\s+import\b/,
+
+      /^\s*(return|pass|break|continue|raise)\b/m,
+      /^\s*(if|elif|else|for|while|try|except|finally|with)\b/m,
+
+      /\bprint\s*\(/,
+      /\binput\s*\(/,
+
+      /^[_A-Za-z]\w*\s*=\s*.+$/,
+      /^[_A-Za-z]\w*(\s*,\s*[_A-Za-z]\w*)+\s*=\s*.+$/,
+
+      /^[_A-Za-z]\w*\s*\(.*\)\s*$/,
+
+      /\bTrue\b|\bFalse\b|\bNone\b/
+    ];
+
+    return signals.some(r => r.test(t));
+  }
+
+  function hasExistingHighlight(el) {
+    return !!(el && el.querySelector && el.querySelector("span[style*='color:']"));
+  }
+
+  function tokenisePythonToHtml(pythonText) {
+    const src = (pythonText || "").replace(/\r\n/g, "\n");
+    const out = [];
+    let i = 0;
+
+    function span(colour, txt) {
+      return '<span style="color:' + colour + ';">' + txt + "</span>";
+    }
+
+    while (i < src.length) {
+      const ch = src[i];
+
+      if (ch === "#") {
+        const j = src.indexOf("\n", i);
+        const end = j === -1 ? src.length : j;
+        out.push(span(VS_LIGHT.comment, escapeHtml(src.slice(i, end))));
+        i = end;
+        continue;
+      }
+
+      if (ch === "'" || ch === '"') {
+        const quote = ch;
+        const triple = src.slice(i, i + 3) === quote + quote + quote;
+        let j = i + (triple ? 3 : 1);
+
+        while (j < src.length) {
+          if (!triple && src[j] === "\\" && j + 1 < src.length) { j += 2; continue; }
+          if (triple && src.slice(j, j + 3) === quote + quote + quote) { j += 3; break; }
+          if (!triple && src[j] === quote) { j += 1; break; }
+          j += 1;
+        }
+
+        out.push(span(VS_LIGHT.string, escapeHtml(src.slice(i, j))));
+        i = j;
+        continue;
+      }
+
+      const num = src.slice(i).match(/^\d+(\.\d+)?/);
+      if (num) {
+        out.push(span(VS_LIGHT.number, escapeHtml(num[0])));
+        i += num[0].length;
+        continue;
+      }
+
+      const ident = src.slice(i).match(/^[_A-Za-z][_A-Za-z0-9]*/);
+      if (ident) {
+        const word = ident[0];
+        const escaped = escapeHtml(word);
+
+        const before = src.slice(0, i);
+        const after = src.slice(i + word.length);
+
+        const isAfterDef = /\bdef\s+$/.test(before);
+        const isCall = /^\s*\(/.test(after);
+
+        if (PY_KEYWORDS.has(word)) {
+          out.push(span(VS_LIGHT.keyword, escaped));
+        } else if (isAfterDef || isCall || PY_BUILTINS.has(word)) {
+          out.push(span(VS_LIGHT.call, escaped));
+        } else {
+          out.push('<span style="color:' + VS_LIGHT.text + ';">' + escaped + "</span>");
+        }
+
+        i += word.length;
+        continue;
+      }
+
+      out.push(escapeHtml(ch));
+      i += 1;
+    }
+
+    return out.join("");
+  }
+
+  function isTaggedPython(el) {
+    const cls = (el.getAttribute("class") || "").toLowerCase();
+    const lang = (el.getAttribute("data-lang") || "").toLowerCase();
+    const dp = (el.getAttribute("data-language") || "").toLowerCase();
+
+    return cls.includes("python") || lang === "python" || dp === "python";
+  }
+
+  function highlightDom(doc, opts) {
+    const preBlocks = Array.from(doc.querySelectorAll("pre"));
+    const codeBlocks = opts.alsoInline ? Array.from(doc.querySelectorAll("code")) : [];
+
+    for (const pre of preBlocks) {
+      const raw = pre.textContent || "";
+      if (opts.onlyTagged && !isTaggedPython(pre) && !looksLikePython(raw)) continue;
+      if (hasExistingHighlight(pre) && !opts.forceRehighlight) continue;
+
+      pre.innerHTML = tokenisePythonToHtml(raw);
+      pre.style.whiteSpace = "pre";
+    }
+
+    for (const code of codeBlocks) {
+      if (code.closest("pre")) continue;
+
+      const raw = code.textContent || "";
+      if (!raw.trim()) continue;
+
+      if (!isTaggedPython(code) && !looksLikePython(raw)) continue;
+      if (hasExistingHighlight(code) && !opts.forceRehighlight) continue;
+
+      code.innerHTML = tokenisePythonToHtml(raw);
+      code.style.whiteSpace = "pre-wrap";
+    }
+  }
+
+  function convertPageHtml() {
+    const input = document.getElementById("htmlInput").value || "";
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(input, "text/html");
+
+    const opts = {
+      onlyTagged: document.getElementById("onlyTagged").checked,
+      alsoInline: document.getElementById("alsoInline").checked,
+      forceRehighlight: document.getElementById("forceRehighlight").checked
+    };
+
+    highlightDom(doc, opts);
+
+    document.getElementById("htmlOutput").value = doc.body ? doc.body.innerHTML : input;
+  }
+
+  function copyOutput() {
+    const out = document.getElementById("htmlOutput");
+    out.focus();
+    out.select();
+    document.execCommand("copy");
+    
+    // Simple visual feedback
+    const btn = document.getElementById("copyBtn");
+    const originalText = btn.innerHTML;
+    btn.innerHTML = "✅ Copied!";
+    btn.classList.add("text-green-600", "border-green-600");
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.classList.remove("text-green-600", "border-green-600");
+    }, 2000);
+  }
+
+  document.getElementById("convertBtn").addEventListener("click", convertPageHtml);
+  document.getElementById("copyBtn").addEventListener("click", copyOutput);
+</script>
+</body>
+</html>

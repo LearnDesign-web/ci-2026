@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Table to CSV Toolkit</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        /* Base Fonts & Colors */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        
+        /* Unified Button Styles */
+        .btn-primary {
+            background-color: #1e293b; /* Slate 800 */
+            color: white;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #0f172a; /* Slate 900 */
+            transform: translateY(-1px);
+        }
+
+        /* Secondary Gray Buttons (matches image_b95b33.png) */
+        .btn-secondary {
+            background-color: #f8fafc; /* Slate 50 */
+            color: #64748b; /* Slate 500 */
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s;
+        }
+        .btn-secondary:hover {
+            background-color: #f1f5f9;
+            color: #334155;
+            border-color: #cbd5e1;
+        }
+
+        /* --- Spreadsheet Grid Styles (matches image_b95b6f.png) --- */
+        table {
+            border-collapse: collapse; /* Critical for single borders */
+            width: 100%;
+            table-layout: fixed;
+        }
+        
+        /* The cells where user types */
+        .editor-cell {
+            border: 1px solid #d1d5db; /* Visible Gray-300 border */
+            padding: 8px 12px;
+            outline: none;
+            min-width: 120px;
+            font-size: 14px;
+            color: #334155;
+            background: white;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .editor-cell:focus {
+            background-color: #eff6ff; /* Blue-50 */
+            border: 2px solid #3b82f6; /* Blue-500 highlight */
+            z-index: 10;
+            position: relative;
+        }
+
+        /* Column Headers (A, B, C...) */
+        .editor-header-col {
+            background-color: #f1f5f9; /* Slate 100 */
+            font-weight: 600;
+            text-align: left;
+            padding-left: 12px;
+            border: 1px solid #cbd5e1;
+            color: #475569;
+            user-select: none;
+            height: 40px;
+        }
+
+        /* Row Numbers (1, 2, 3...) */
+        .editor-header-row {
+            background-color: #f1f5f9;
+            font-weight: 600;
+            text-align: center;
+            border: 1px solid #cbd5e1;
+            color: #64748b;
+            user-select: none;
+            width: 50px;
+        }
+
+        /* Tooltip Logic for BOM Info */
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip-text {
+            visibility: hidden;
+            width: 220px;
+            background-color: #1e293b;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%; /* Position above */
+            left: 50%;
+            margin-left: -110px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            font-weight: normal;
+            line-height: 1.4;
+            pointer-events: none;
+        }
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        /* Tiny arrow for tooltip */
+        .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800 flex flex-col">
+
+    <div class="flex-grow p-4 md:p-8">
+        <div class="max-w-[1400px] mx-auto bg-white p-6 md:p-8 rounded-lg shadow-lg border-t-4 border-yellow-400">
+            
+            <h1 class="text-2xl md:text-3xl font-bold mb-6 text-center text-slate-800">𝄜 Table to CSV Converter</h1>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8 text-blue-800 flex items-start gap-3">
+                <span class="text-2xl">💡</span>
+                <div>
+                    <p class="text-sm opacity-90">Paste your table data below or upload a file. Use the editor to clean up rows before generating your final CSV. </p>
+                </div>
+            </div>
+
+            <div class="mb-8 border border-gray-200 rounded-lg overflow-hidden bg-white">
+                <div class="px-5 py-4 border-b border-gray-200 flex justify-between items-center bg-white">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-3">
+                        <span class="bg-slate-800 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                        Data Source
+                    </h3>
+                    
+                    <div class="flex items-center h-full">
+                        <button onclick="loadExample()" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors px-3 py-1 rounded hover:bg-blue-50">Load Example</button>
+                        
+                        <div class="h-4 w-px bg-gray-300 mx-1"></div> 
+                        
+                        <label class="text-sm font-medium text-blue-600 hover:text-blue-800 cursor-pointer transition-colors px-3 py-1 rounded hover:bg-blue-50 flex items-center gap-1">
+                            Upload File (.xlsx / .csv)
+                            <input type="file" class="hidden" accept=".xlsx, .xls, .csv" onchange="handleFileUpload(this)">
+                        </label>
+                    </div>
+                </div>
+                <div class="p-1 bg-slate-800">
+                    <textarea id="sourceInput" class="w-full h-40 p-4 font-mono text-sm border-none focus:ring-0 bg-slate-800 text-gray-100 transition-colors resize-y placeholder-gray-500" 
+                        placeholder="Paste Excel rows/columns here..." 
+                        oninput="parseInput()"></textarea>
+                </div>
+            </div>
+
+            <div class="mb-8 border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white">
+                <div class="px-5 py-3 border-b border-gray-200 flex flex-wrap justify-between items-center gap-3 bg-white">
+                    <h3 class="font-bold text-slate-800 flex items-center gap-3">
+                        <span class="bg-slate-800 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                        Table Editor
+                    </h3>
+                    
+                    <div class="flex items-center gap-2">
+                        <button onclick="deleteEmpty()" class="btn-secondary px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2" title="Remove rows that have no data">
+                            <span class="text-slate-400">🗑️</span> Delete Empty Rows
+                        </button>
+                        <button onclick="clearData()" class="btn-secondary px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2" title="Clear Grid">
+                            <span class="text-red-400">🧹</span> Clear All
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-auto max-h-[500px] w-full relative bg-gray-50">
+                    <table id="editor-table">
+                        <tbody>
+                            <tr><td class="p-12 text-center text-gray-400 italic border-none">
+                                No data loaded. Paste data above to start editing.
+                            </td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="px-4 py-2 bg-white text-xs text-right text-slate-400 border-t border-gray-100" id="grid-dimensions">
+                    0 rows x 0 columns
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <div class="lg:col-span-4 bg-gray-50 p-6 rounded-lg border border-gray-200 h-full flex flex-col">
+                    <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                        <span class="bg-slate-800 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold">3</span>
+                        Options
+                    </h3>
+                    
+                    <div class="space-y-5 flex-grow">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-2">Value Delimiter</label>
+                            <div class="relative">
+                                <select id="opt-delimiter" class="w-full p-2.5 bg-white border border-gray-300 rounded-md text-sm text-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none shadow-sm appearance-none cursor-pointer" onchange="generateOutput()">
+                                    <option value=",">Comma (CSV)</option>
+                                    <option value=";">Semicolon (CSV French)</option>
+                                    <option value="	">Tab (TSV)</option>
+                                    <option value="|">Pipe (|)</option>
+                                    <option value=":">Colon (:)</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 pt-2">
+                            <label class="flex items-center gap-3 cursor-pointer select-none">
+                                <input type="checkbox" id="opt-quotes" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" checked onchange="generateOutput()">
+                                <span class="text-sm text-slate-700">Double Quote Wrap</span>
+                            </label>
+                            
+                            <div class="flex items-center gap-3">
+                                <label class="flex items-center gap-3 cursor-pointer select-none">
+                                    <input type="checkbox" id="opt-bom" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" onchange="generateOutput()">
+                                    <span class="text-sm text-slate-700">UTF-8 BOM</span>
+                                </label>
+                                <div class="tooltip-container cursor-help">
+                                    <span class="text-red-700 font-bold bg-red-100 rounded-full w-4 h-4 flex items-center justify-center text-[10px] border border-red-200">i</span>
+                                    <span class="tooltip-text">Add UTF-8 byte order mark to help Excel and other software recognize encoding</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8">
+                         <button onclick="downloadOutput()" class="btn-primary w-full py-3 rounded-lg shadow-sm font-semibold flex items-center justify-center gap-2 text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            Download File
+                        </button>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8 flex flex-col h-full">
+                     <div class="flex justify-between items-end mb-2">
+                        <label class="font-bold text-slate-700 text-sm">Output Preview</label>
+                        <button onclick="copyOutput()" class="text-xs bg-white border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded font-medium text-slate-600 transition-colors flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                            Copy to Clipboard
+                        </button>
+                    </div>
+                    <textarea id="outputResult" readonly class="flex-grow w-full p-4 border border-gray-300 rounded-lg font-mono text-xs md:text-sm focus:outline-none bg-slate-800 text-green-400 min-h-[300px] leading-relaxed shadow-inner"></textarea>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 pt-8 border-t border-gray-100">
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">🛡️ Privacy First</h4>
+                    <p class="text-sm text-gray-600">100% client-side processing. Your data never leaves your browser.</p>
+                </div>
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">⚡ Blazing Fast</h4>
+                    <p class="text-sm text-gray-600">Instant parsing of large datasets. No waiting for server uploads.</p>
+                </div>
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">📝 Clean Output</h4>
+                    <p class="text-sm text-gray-600">Strict CSV standards compliance for LMS and database imports.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <footer class="mt-auto">
+        <svg class="w-full h-16 md:h-24 lg:h-32 text-slate-800" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path fill-opacity="1" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+        </svg>
+        <div class="bg-slate-800 text-white py-6 text-center">
+            <p class="font-medium text-lg tracking-wide">Developed by Reem Alashhab using Gemini 3 Pro</p>
+        </div>
+    </footer>
+
+    <script>
+        let gridData = [];
+
+        // --- 1. Input Parsing ---
+
+        function parseInput() {
+            const raw = document.getElementById('sourceInput').value;
+            if(!raw) {
+                gridData = [];
+                renderGrid();
+                return;
+            }
+
+            let rows = raw.trim().split('\n');
+            // Basic detection: prefer tab (Excel paste), then comma
+            let delimiter = '\t';
+            if (rows[0].indexOf('\t') === -1 && rows[0].indexOf(',') > -1) {
+                delimiter = ',';
+            }
+
+            gridData = rows.map(row => row.split(delimiter));
+            renderGrid();
+            generateOutput();
+        }
+
+        function loadExample() {
+            const example = "ID\tCourse Name\tModule\tStatus\n101\tBioEthics\tIntro\tActive\n102\tAnatomy\tWeek 1\tDraft\n103\tSafety\tFinal\tReview";
+            document.getElementById('sourceInput').value = example;
+            parseInput();
+        }
+
+        // --- 2. Grid Rendering ---
+
+        function renderGrid() {
+            const table = document.getElementById('editor-table');
+            const dimLabel = document.getElementById('grid-dimensions');
+            
+            if (gridData.length === 0) {
+                table.innerHTML = '<tbody><tr><td class="p-12 text-center text-gray-400 italic border-none">No data loaded. Paste data above to start editing.</td></tr></tbody>';
+                dimLabel.innerText = "0 rows x 0 columns";
+                return;
+            }
+
+            dimLabel.innerText = `${gridData.length} rows x ${gridData[0]?.length || 0} columns`;
+
+            // Build Header Row (A, B, C)
+            let html = '<thead><tr><th class="editor-header-row">#</th>';
+            const colCount = gridData[0]?.length || 0;
+            for(let i=0; i<colCount; i++) {
+                html += `<th class="editor-header-col">${String.fromCharCode(65+i)}</th>`;
+            }
+            html += '</tr></thead><tbody>';
+
+            // Build Body Rows
+            gridData.forEach((row, rIndex) => {
+                html += `<tr><td class="editor-header-row">${rIndex + 1}</td>`;
+                row.forEach((cell, cIndex) => {
+                    // contenteditable for live editing
+                    html += `<td contenteditable="true" class="editor-cell" onblur="updateCell(${rIndex}, ${cIndex}, this.innerText)">${cell || ''}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+
+        function updateCell(r, c, val) {
+            if(gridData[r]) gridData[r][c] = val;
+            generateOutput();
+        }
+
+        // --- 3. Toolbar Functions ---
+
+        function clearData() {
+            if(confirm('Are you sure you want to clear all data?')) {
+                document.getElementById('sourceInput').value = '';
+                gridData = [];
+                renderGrid();
+                document.getElementById('outputResult').value = '';
+                document.getElementById('grid-dimensions').innerText = "0 rows x 0 columns";
+            }
+        }
+
+        function deleteEmpty() {
+             if (gridData.length === 0) return;
+             
+             // Keep row if at least one cell has content
+             const initialLength = gridData.length;
+             gridData = gridData.filter(row => {
+                 return row.some(cell => cell && cell.trim() !== "");
+             });
+
+             if (gridData.length < initialLength) {
+                 renderGrid();
+                 generateOutput();
+             } else {
+                 alert("No completely empty rows found.");
+             }
+        }
+
+        // --- 4. Generator Logic ---
+
+        function generateOutput() {
+            if (gridData.length === 0) {
+                document.getElementById('outputResult').value = '';
+                return;
+            }
+
+            const delimiter = document.getElementById('opt-delimiter').value;
+            const useQuotes = document.getElementById('opt-quotes').checked;
+            
+            let output = gridData.map(row => {
+                return row.map(cell => {
+                    let val = cell || ''; 
+                    // Escape existing quotes (CSV standard)
+                    if (val.includes('"')) val = val.replace(/"/g, '""');
+                    
+                    if (useQuotes) {
+                        return `"${val}"`;
+                    } else {
+                        // Auto-quote if necessary (contains delimiter or newline)
+                        if (val.includes(delimiter) || val.includes('\n')) return `"${val}"`;
+                        return val;
+                    }
+                }).join(delimiter);
+            }).join('\n');
+
+            document.getElementById('outputResult').value = output;
+        }
+
+        // --- 5. File & Clipboard ---
+
+        function handleFileUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = e.target.result;
+                // Basic XLSX check
+                if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                    if (typeof XLSX === 'undefined') {
+                        alert("XLSX parsing library not loaded. Ensure internet connection.");
+                        return;
+                    }
+                    const workbook = XLSX.read(data, {type: 'binary'});
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    // Convert sheet to TSV for internal parsing logic
+                    const csv = XLSX.utils.sheet_to_csv(firstSheet, {FS: "\t"}); 
+                    document.getElementById('sourceInput').value = csv;
+                    parseInput();
+                } else {
+                    document.getElementById('sourceInput').value = data;
+                    parseInput();
+                }
+            };
+            
+            if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                reader.readAsBinaryString(file);
+            } else {
+                reader.readAsText(file);
+            }
+        }
+
+        function copyOutput() {
+            const copyText = document.getElementById("outputResult");
+            if(!copyText.value) return;
+            
+            copyText.select();
+            document.execCommand("copy");
+            
+            const btn = document.querySelector('button[onclick="copyOutput()"]');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = `✅ Copied!`;
+            btn.classList.add('bg-green-50', 'text-green-600', 'border-green-200');
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.classList.remove('bg-green-50', 'text-green-600', 'border-green-200');
+            }, 2000);
+        }
+
+        function downloadOutput() {
+            const text = document.getElementById("outputResult").value;
+            if(!text) {
+                alert("No data to download.");
+                return;
+            }
+
+            const useBom = document.getElementById('opt-bom').checked;
+            let blob;
+            if(useBom) {
+                // Prepend BOM char for Excel compatibility
+                blob = new Blob(["\ufeff", text], { type: "text/csv;charset=utf-8" });
+            } else {
+                blob = new Blob([text], { type: "text/csv" });
+            }
+            
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "data_export.csv";
+            link.click();
+        }
+    </script>
+</body>
+</html>

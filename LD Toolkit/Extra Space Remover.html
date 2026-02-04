@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extra Space Remover</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* Unified Button Styles from Gemini Tool */
+        .btn-primary {
+            background-color: #1e293b; /* Slate 800 */
+            color: white;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #0f172a; /* Slate 900 */
+            transform: translateY(-2px);
+        }
+        
+        /* Custom Checkbox Styling */
+        input[type="checkbox"] {
+            accent-color: #1e293b;
+            width: 1.2em;
+            height: 1.2em;
+            margin-right: 0.5em;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800 flex flex-col">
+
+    <div class="flex-grow p-4 md:p-8">
+        <div class="max-w-7xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-lg border-t-4 border-yellow-400">
+            
+            <h1 class="text-2xl md:text-3xl font-bold mb-2 text-center text-slate-800">🧼 Extra Space Remover</h1>
+            <p class="text-center text-gray-500 mb-8">Quickly sanitize text, remove erratic whitespace, and fix blank lines.</p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                
+                <div class="flex flex-col h-full">
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="input-text" class="text-sm font-medium text-gray-700">📥 Original Text</label>
+                        <button onclick="resetText()" class="text-sm text-gray-500 hover:text-red-500 transition-colors">Reset</button>
+                    </div>
+                    <textarea id="inputText" class="flex-grow w-full p-4 border-2 border-gray-200 rounded-lg font-mono text-sm focus:outline-none focus:border-slate-500 h-96 transition-colors resize-none" placeholder="Paste your text here..." oninput="processText()"></textarea>
+                </div>
+
+                <div class="flex flex-col h-full">
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="output-text" class="text-sm font-medium text-gray-700">📤 Cleaned Text</label>
+                        <span id="copyFeedback" class="text-sm font-medium text-green-600 opacity-0 transition-opacity">✅ Copied!</span>
+                    </div>
+                    <textarea id="outputText" readonly class="flex-grow w-full p-4 border-2 border-gray-200 rounded-lg font-mono text-sm focus:outline-none bg-gray-50 h-96 resize-none" placeholder="Cleaned text will appear here..."></textarea>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+                <h4 class="text-slate-800 font-bold mb-4 flex items-center gap-2">⚙️ Cleaning Options</h4>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <label class="flex items-center p-2 rounded hover:bg-blue-100 cursor-pointer transition-colors">
+                        <input type="checkbox" id="optExtraSpaces" checked onchange="processText()">
+                        <span class="text-sm text-gray-700">Remove extra spaces</span>
+                    </label>
+
+                    <label class="flex items-center p-2 rounded hover:bg-blue-100 cursor-pointer transition-colors">
+                        <input type="checkbox" id="optTrimEnd" checked onchange="processText()">
+                        <span class="text-sm text-gray-700">Trim trailing spaces</span>
+                    </label>
+
+                    <label class="flex items-center p-2 rounded hover:bg-blue-100 cursor-pointer transition-colors">
+                        <input type="checkbox" id="optKeepOneEmpty" checked onchange="handleEmptyLines(this)">
+                        <span class="text-sm text-gray-700">Keep one empty line</span>
+                    </label>
+
+                    <label class="flex items-center p-2 rounded hover:bg-blue-100 cursor-pointer transition-colors">
+                        <input type="checkbox" id="optPunctuation" onchange="processText()">
+                        <span class="text-sm text-gray-700">Fix punctuation</span>
+                    </label>
+
+                    <label class="flex items-center p-2 rounded hover:bg-blue-100 cursor-pointer transition-colors">
+                        <input type="checkbox" id="optTrimStart" onchange="processText()">
+                        <span class="text-sm text-gray-700">Trim leading spaces</span>
+                    </label>
+
+                    <label class="flex items-center p-2 rounded hover:bg-blue-100 cursor-pointer transition-colors">
+                        <input type="checkbox" id="optRemoveEmpty" onchange="handleEmptyLines(this)">
+                        <span class="text-sm text-gray-700">Remove empty lines</span>
+                    </label>
+
+                    <label class="flex items-center p-2 rounded hover:bg-blue-100 cursor-pointer transition-colors">
+                        <input type="checkbox" id="optRemoveAll" onchange="processText()">
+                        <span class="text-sm text-gray-700 font-medium text-red-600">Remove ALL spaces</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex justify-center mb-8">
+                <button class="btn-primary py-3 px-10 rounded-md font-medium shadow-lg text-lg" onclick="copyText()">📋 Copy Clean Text</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 border-t border-gray-100">
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">🛡️ Privacy First</h4>
+                    <p class="text-sm text-gray-600">100% client-side processing. Your data never leaves this browser.</p>
+                </div>
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">🧹 Squeaky Clean</h4>
+                    <p class="text-sm text-gray-600">Instantly removes accidental tabs, double spaces, and messy line breaks.</p>
+                </div>
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <h4 class="text-slate-800 font-bold mb-2 flex items-center gap-2">🎓 Canvas Ready</h4>
+                    <p class="text-sm text-gray-600">Ensures clean HTML structure for pasting directly into Canvas LMS pages.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-auto">
+        <svg class="w-full h-16 md:h-24 lg:h-32 text-slate-800" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path fill-opacity="1" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+        </svg>
+        <div class="bg-slate-800 text-white py-6 text-center">
+            <p class="font-medium text-lg tracking-wide">Developed by Reem Alashhab using Gemini 3 Pro</p>
+        </div>
+    </footer>
+
+    <script>
+        function handleEmptyLines(checkbox) {
+            if (checkbox.id === 'optRemoveEmpty' && checkbox.checked) {
+                document.getElementById('optKeepOneEmpty').checked = false;
+            } else if (checkbox.id === 'optKeepOneEmpty' && checkbox.checked) {
+                document.getElementById('optRemoveEmpty').checked = false;
+            }
+            processText();
+        }
+
+        function resetText() {
+            document.getElementById('inputText').value = '';
+            processText();
+        }
+
+        async function copyText() {
+            const output = document.getElementById('outputText');
+            output.select();
+            try {
+                await navigator.clipboard.writeText(output.value);
+                
+                // Show feedback
+                const feedback = document.getElementById('copyFeedback');
+                feedback.classList.remove('opacity-0');
+                
+                // Also update button text temporarily
+                const btn = document.querySelector('.btn-primary');
+                const originalText = btn.innerText;
+                btn.innerText = '✅ Copied!';
+                
+                setTimeout(() => {
+                    feedback.classList.add('opacity-0');
+                    btn.innerText = originalText;
+                }, 2000);
+            } catch (err) {
+                alert('Failed to copy text');
+            }
+        }
+
+        function processText() {
+            let text = document.getElementById('inputText').value;
+            const opts = {
+                extraSpaces: document.getElementById('optExtraSpaces').checked,
+                trimStart: document.getElementById('optTrimStart').checked,
+                trimEnd: document.getElementById('optTrimEnd').checked,
+                removeEmpty: document.getElementById('optRemoveEmpty').checked,
+                keepOneEmpty: document.getElementById('optKeepOneEmpty').checked,
+                punctuation: document.getElementById('optPunctuation').checked,
+                removeAll: document.getElementById('optRemoveAll').checked
+            };
+
+            if (!text) {
+                document.getElementById('outputText').value = '';
+                return;
+            }
+
+            // 1. Remove All Spaces (Nuclear)
+            if (opts.removeAll) {
+                text = text.replace(/\s+/g, '');
+                document.getElementById('outputText').value = text;
+                return;
+            }
+
+            let lines = text.split('\n');
+
+            // 2. Trim Start (Leading)
+            if (opts.trimStart) {
+                lines = lines.map(line => line.replace(/^\s+/, ''));
+            }
+
+            // 3. Trim End (Trailing)
+            if (opts.trimEnd) {
+                lines = lines.map(line => line.replace(/\s+$/, ''));
+            }
+
+            // 4. Remove Extra Internal Spaces
+            if (opts.extraSpaces) {
+                lines = lines.map(line => line.replace(/[ ]{2,}/g, ' '));
+            }
+
+            // 5. Filter Empty Lines
+            if (opts.removeEmpty) {
+                lines = lines.filter(line => line.trim() !== '');
+            }
+
+            // Reassemble
+            text = lines.join('\n');
+
+            // 6. Keep One Empty Line
+            if (opts.keepOneEmpty && !opts.removeEmpty) {
+                text = text.replace(/\n{3,}/g, '\n\n');
+            }
+
+            // 7. Fix Punctuation
+            if (opts.punctuation) {
+                text = text.replace(/\s+([.,;?!:])/g, '$1');
+                text = text.replace(/([.,;?!:])(?=[a-zA-Z0-9])/g, '$1 ');
+            }
+
+            document.getElementById('outputText').value = text;
+        }
+    </script>
+</body>
+</html>
